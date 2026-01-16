@@ -10,6 +10,7 @@ import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
+import base64
 
 # =============================================================================
 # PAGE CONFIG & CUSTOM CSS
@@ -24,9 +25,10 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     :root {
+        /* Colors */
         --primary: #0891b2;
         --primary-dark: #0e7490;
         --primary-light: #22d3ee;
@@ -39,363 +41,525 @@ st.markdown("""
         --gray-100: #f3f4f6;
         --gray-200: #e5e7eb;
         --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
         --gray-500: #6b7280;
+        --gray-600: #4b5563;
         --gray-700: #374151;
         --gray-900: #111827;
+
+        /* Spacing */
+        --space-1: 4px;
+        --space-2: 8px;
+        --space-3: 12px;
+        --space-4: 16px;
+        --space-5: 20px;
+        --space-6: 24px;
+
+        /* Typography */
+        --text-xs: 12px;
+        --text-sm: 14px;
+        --text-base: 16px;
+        --text-lg: 18px;
+        --text-xl: 20px;
+
+        /* Sizes */
+        --input-height: 48px;
+        --button-height: 48px;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+
+        /* Shadows */
+        --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
+        --shadow-elevated: 0 4px 12px rgba(0,0,0,0.12);
     }
 
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Hide Streamlit chrome */
+    #MainMenu, footer, header {visibility: hidden;}
 
+    /* Neutral background */
     .stApp {
-        background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 50%, #f0f9ff 100%);
+        background: #f8f9fa;
     }
 
+    /* Container */
     .block-container {
-        padding: 1rem 1rem;
+        padding: 0 var(--space-4) var(--space-4);
         max-width: 420px !important;
         margin: 0 auto;
     }
-
-    /* Force narrow width on all content */
     .stMainBlockContainer {
         max-width: 420px !important;
         margin: 0 auto;
     }
 
-    /* Modern Button Styles */
+    /* Global typography */
+    * {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* ===== APP BAR ===== */
+    .app-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 var(--space-4);
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+        margin: 0 calc(-1 * var(--space-4)) var(--space-4);
+    }
+    .app-bar-left {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+    }
+    .app-bar-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--primary);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+    .app-bar-title {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .app-bar-btn {
+        display: flex;
+        align-items: center;
+        gap: var(--space-1);
+        padding: var(--space-2) var(--space-3);
+        background: var(--gray-100);
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .app-bar-btn:hover {
+        background: var(--gray-200);
+    }
+    .app-bar-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .app-bar-actions {
+        position: absolute;
+        top: 0;
+        right: var(--space-4);
+        height: 56px;
+        display: flex;
+        align-items: center;
+    }
+    /* Style the preview button row to overlap with app bar */
+    .preview-btn-row {
+        margin-top: -48px;
+        margin-bottom: var(--space-3);
+        display: flex;
+        justify-content: flex-end;
+    }
+    .preview-btn-row .stButton > button {
+        min-height: 36px;
+        padding: var(--space-2) var(--space-3);
+        font-size: var(--text-sm);
+        background: var(--gray-100);
+        color: var(--gray-700);
+    }
+    .preview-btn-row .stButton > button:hover:not(:disabled) {
+        background: var(--gray-200);
+    }
+    .preview-btn-row .stButton > button:disabled {
+        opacity: 0.5;
+    }
+
+    /* ===== WARNING BANNER ===== */
+    .warning-banner {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
+        background: #fffbeb;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        color: #92400e;
+        margin-bottom: var(--space-4);
+    }
+    .warning-banner-icon {
+        flex-shrink: 0;
+    }
+    .warning-banner-text {
+        flex: 1;
+    }
+    .warning-banner-link {
+        color: var(--warning);
+        font-weight: 500;
+        cursor: pointer;
+    }
+
+    /* ===== CARD (single style) ===== */
+    .card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        box-shadow: var(--shadow-card);
+        margin-bottom: var(--space-4);
+    }
+    .card-header {
+        margin-bottom: var(--space-4);
+    }
+    .card-title {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--gray-900);
+        margin: 0;
+    }
+    .card-subtitle {
+        font-size: var(--text-sm);
+        color: var(--gray-500);
+        margin-top: var(--space-1);
+    }
+
+    /* ===== SECTION LABEL ===== */
+    .section-label {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: var(--space-2);
+    }
+    .section-helper {
+        font-size: var(--text-xs);
+        color: var(--gray-500);
+        margin-bottom: var(--space-2);
+    }
+
+    /* ===== INPUTS ===== */
+    .stTextInput > div > div {
+        border-radius: var(--radius-md);
+        min-height: var(--input-height);
+        font-size: var(--text-base);
+    }
+    .stTextInput > div > div > input {
+        font-size: var(--text-base);
+    }
+    .stNumberInput > div > div {
+        border-radius: var(--radius-md);
+        min-height: var(--input-height);
+    }
+    .stSelectbox > div > div {
+        border-radius: var(--radius-md);
+        min-height: var(--input-height);
+    }
+
+    /* ===== BUTTONS ===== */
     .stButton > button {
         font-family: 'Inter', sans-serif;
         font-weight: 500;
-        min-height: 40px;
-        font-size: 0.85rem;
-        border-radius: 8px;
+        min-height: var(--button-height);
+        font-size: var(--text-base);
+        border-radius: var(--radius-md);
         border: none;
-        transition: all 0.2s ease;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.15s ease;
     }
-
     .stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        box-shadow: var(--shadow-elevated);
     }
-
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background: var(--primary);
     }
-
-    .stCheckbox > label {
-        font-family: 'Inter', sans-serif;
-        min-height: 36px;
-        display: flex;
-        align-items: center;
-        font-size: 0.8rem;
+    .stButton > button[kind="secondary"] {
+        background: var(--gray-100);
         color: var(--gray-700);
     }
 
-    /* Expander Styling */
-    .streamlit-expanderHeader {
-        font-family: 'Inter', sans-serif;
-        font-weight: 600;
-        font-size: 1rem;
-        color: var(--gray-900);
-        background-color: white;
-        border-radius: 12px;
-    }
-
-    /* Header */
-    .app-header {
-        background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
-        padding: 1.25rem 1rem;
-        border-radius: 12px;
-        margin-bottom: 1rem;
-        box-shadow: 0 4px 20px rgba(8, 145, 178, 0.25);
-    }
-
-    .app-logo {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-    }
-
-    .app-icon {
-        width: 40px;
-        height: 40px;
-        background: rgba(255,255,255,0.2);
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-    }
-
-    .app-title {
-        font-family: 'Inter', sans-serif;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: white;
-        margin: 0;
-        letter-spacing: -0.5px;
-    }
-
-    .app-subtitle {
-        font-family: 'Inter', sans-serif;
-        font-size: 0.8rem;
-        color: rgba(255,255,255,0.85);
-        margin-top: 0.25rem;
-        font-weight: 400;
-    }
-
-    /* Status Bar */
-    .status-bar {
-        background: white;
-        border: 1px solid var(--gray-200);
-        padding: 10px 14px;
-        border-radius: 8px;
-        text-align: center;
-        margin-bottom: 1rem;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.8rem;
-        font-weight: 500;
-        color: var(--gray-700);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-
-    .status-bar.ready {
-        background: var(--success-light);
-        border-color: var(--success);
-        color: var(--success);
-    }
-
-    /* Medication Cards */
-    .med-card {
-        background: white;
-        border-radius: 10px;
-        padding: 0.875rem;
-        margin-bottom: 0.75rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        border: 1px solid var(--gray-200);
-        transition: all 0.2s ease;
-    }
-
-    .med-card:hover {
-        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-        border-color: var(--gray-300);
-    }
-
-    .med-card.verified {
-        border-left: 3px solid var(--success);
-    }
-
-    .med-card.manual {
-        border-left: 3px solid var(--warning);
-        background: linear-gradient(135deg, white 0%, #fffbeb 100%);
-    }
-
-    .med-badge {
+    /* ===== SELECTED MEDICATION CHIP ===== */
+    .selected-chip {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .med-badge.verified {
+        gap: var(--space-2);
+        padding: var(--space-2) var(--space-3);
         background: var(--success-light);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-4);
+    }
+    .selected-chip-icon {
         color: var(--success);
     }
-
-    .med-badge.manual {
-        background: var(--warning-light);
-        color: var(--warning);
-    }
-
-    .med-name {
-        font-family: 'Inter', sans-serif;
-        font-size: 1rem;
+    .selected-chip-name {
         font-weight: 600;
         color: var(--gray-900);
-        margin-bottom: 0.15rem;
+    }
+    .selected-chip-change {
+        font-size: var(--text-sm);
+        color: var(--primary);
+        cursor: pointer;
+        margin-left: var(--space-2);
     }
 
-    .med-details {
-        font-family: 'Inter', sans-serif;
-        font-size: 0.8rem;
+    /* ===== TIME CHIPS ===== */
+    .time-chips {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--space-2);
+    }
+    .time-chip {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        min-height: 44px;
+        padding: var(--space-3);
+        background: white;
+        border: 2px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .time-chip:hover {
+        border-color: var(--primary);
+    }
+    .time-chip.selected {
+        background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+        border-color: var(--primary);
+        color: var(--primary-dark);
+    }
+    .time-chip-check {
+        display: none;
+    }
+    .time-chip.selected .time-chip-check {
+        display: inline;
+        color: var(--primary);
+    }
+
+    /* ===== STICKY ACTION BAR ===== */
+    .sticky-action-bar {
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 420px;
+        background: white;
+        border-top: 1px solid var(--gray-200);
+        padding: var(--space-3) var(--space-4);
+        padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0));
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+    .sticky-bar-summary {
+        font-size: var(--text-sm);
+        color: var(--gray-500);
+        margin-bottom: var(--space-2);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .sticky-bar-error {
+        font-size: var(--text-xs);
+        color: var(--danger);
+        margin-bottom: var(--space-2);
+    }
+
+    /* ===== MEDICATION LIST ===== */
+    .med-list-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+    }
+    .med-list-title {
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .med-item {
+        display: flex;
+        align-items: center;
+        padding: var(--space-3) var(--space-4);
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+        margin-bottom: var(--space-2);
+    }
+    .med-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .med-item-name {
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .med-item-details {
+        font-size: var(--text-sm);
+        color: var(--gray-500);
+        margin-top: 2px;
+    }
+    .med-item-actions {
+        display: flex;
+        gap: var(--space-2);
+    }
+    .med-item-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .med-item-btn:hover {
+        background: var(--gray-200);
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+        text-align: center;
+        padding: var(--space-6) var(--space-4);
+    }
+    .empty-state-icon {
+        font-size: 48px;
+        margin-bottom: var(--space-3);
+        opacity: 0.4;
+    }
+    .empty-state-title {
+        font-size: var(--text-base);
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: var(--space-1);
+    }
+    .empty-state-text {
+        font-size: var(--text-sm);
         color: var(--gray-500);
     }
 
-    .time-slots {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 5px;
-        margin-top: 0.5rem;
-    }
-
-    .time-slot {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        color: white;
-        padding: 4px 10px;
-        border-radius: 5px;
-        font-size: 0.7rem;
-        font-family: 'Inter', sans-serif;
-        font-weight: 500;
-    }
-
-    /* Manual Entry Warning */
-    .manual-warning {
-        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-        border: 1px solid #f59e0b;
-        color: #92400e;
-        padding: 14px 18px;
-        border-radius: 10px;
-        margin-bottom: 1rem;
-        text-align: center;
-        font-weight: 600;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.9rem;
-    }
-
-    /* Verify Section */
-    .verify-section {
-        background: #fefce8;
-        padding: 0.75rem 1rem;
-        border-radius: 8px;
-        border: 1px dashed #eab308;
-        margin-top: 0.75rem;
-    }
-
-    /* Calendar Styles */
-    .calendar-container {
-        margin: 0.75rem 0;
-        overflow-x: auto;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    .calendar-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.7rem;
-        background: white;
-        border-radius: 8px;
+    /* ===== SEARCH RESULTS ===== */
+    .search-results {
+        margin-top: var(--space-2);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
         overflow: hidden;
     }
-
-    .calendar-table th {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-        color: white;
-        padding: 8px 4px;
-        text-align: center;
-        font-weight: 600;
-        font-size: 0.7rem;
-    }
-
-    .calendar-table td {
-        border: 1px solid var(--gray-200);
-        padding: 6px;
-        vertical-align: top;
-        min-width: 45px;
-        height: 60px;
+    .search-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: var(--space-3);
         background: white;
+        border-bottom: 1px solid var(--gray-100);
+        cursor: pointer;
+        transition: background 0.1s;
     }
-
-    .calendar-table .time-header {
+    .search-result:last-child {
+        border-bottom: none;
+    }
+    .search-result:hover {
         background: var(--gray-50);
-        font-weight: 600;
-        text-align: center;
-        width: 55px;
-        color: var(--gray-700);
-        font-size: 0.65rem;
     }
-
-    .calendar-med {
-        background: #e0f2fe;
-        border-left: 2px solid var(--primary);
-        padding: 3px 4px;
-        margin: 2px 0;
-        border-radius: 4px;
-        font-size: 0.6rem;
-    }
-
-    .calendar-med.manual {
-        background: #fef3c7;
-        border-left-color: var(--warning);
-    }
-
-    .calendar-med .med-title {
-        font-weight: 600;
+    .search-result-name {
+        font-size: var(--text-base);
+        font-weight: 500;
         color: var(--gray-900);
     }
-
-    .calendar-med .med-dose {
+    .search-result-cat {
+        font-size: var(--text-sm);
         color: var(--gray-500);
-        font-size: 0.55rem;
     }
 
-    /* Section Headers */
-    .section-header {
-        font-family: 'Inter', sans-serif;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--gray-900);
-        margin: 1.25rem 0 0.75rem 0;
-        padding-bottom: 0.4rem;
-        border-bottom: 2px solid var(--gray-200);
+    /* ===== LINK BUTTON ===== */
+    .link-btn {
+        font-size: var(--text-sm);
+        color: var(--primary);
+        cursor: pointer;
+        padding: var(--space-2) 0;
+    }
+    .link-btn:hover {
+        text-decoration: underline;
     }
 
-    /* Info Cards */
-    .info-card {
-        background: white;
-        border-radius: 10px;
-        padding: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-        border: 1px solid var(--gray-200);
+    /* ===== EXPANDER ===== */
+    .streamlit-expanderHeader {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--gray-600);
+        background: var(--gray-50);
+        border-radius: var(--radius-sm);
     }
 
-    /* Footer */
+    /* ===== CHECKBOX ===== */
+    .stCheckbox > label {
+        font-size: var(--text-sm);
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        color: var(--gray-700);
+    }
+
+    /* ===== FOOTER ===== */
     .app-footer {
         text-align: center;
-        padding: 1rem;
+        padding: var(--space-4);
+        padding-bottom: calc(var(--space-4) + 80px);
         color: var(--gray-500);
-        font-size: 0.7rem;
-        font-family: 'Inter', sans-serif;
-        margin-top: 1.5rem;
-        border-top: 1px solid var(--gray-200);
+        font-size: var(--text-xs);
     }
 
-    /* Disclaimer Box */
-    .disclaimer-box {
-        background: #fef3c7;
-        border: 1px solid #f59e0b;
-        border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 1rem;
-        font-family: 'Inter', sans-serif;
-        font-size: 0.7rem;
-        color: #92400e;
-        line-height: 1.4;
+    /* ===== DIVIDER ===== */
+    .divider {
+        height: 1px;
+        background: var(--gray-200);
+        margin: var(--space-4) 0;
     }
 
-    /* Form inputs */
-    .stSelectbox > div > div {
-        border-radius: 8px;
+    /* ===== PREVIEW CARD ===== */
+    .preview-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        box-shadow: var(--shadow-elevated);
+        margin-bottom: var(--space-4);
+        border: 2px solid var(--primary);
+    }
+    .preview-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+    }
+    .preview-card-title {
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    .preview-iframe {
+        width: 100%;
+        height: 400px;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-sm);
+        margin-bottom: var(--space-3);
     }
 
-    .stTextInput > div > div {
-        border-radius: 8px;
-    }
-
-    .stNumberInput > div > div {
-        border-radius: 8px;
+    /* Legacy support - keeping for PDF generation */
+    .med-name { font-weight: 600; color: var(--gray-900); }
+    .med-details { font-size: var(--text-sm); color: var(--gray-500); }
+    .time-slot {
+        background: var(--primary);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: var(--text-xs);
+        font-weight: 500;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1845,7 +2009,7 @@ def generate_preview_html(med_list):
         </table>
         <div style="margin-top: 15px; padding: 10px; background-color: #fff8e1; border-radius: 4px; font-size: 0.85rem;">
             <strong>Generated:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}<br>
-            <em>DISCLAIMER: This schedule is for personal reference only. Always consult a pharmacist or healthcare provider.</em>
+            <em>Please verify all medication details with the patient's prescription.</em>
         </div>
     </div>
     '''
@@ -2051,8 +2215,7 @@ def generate_pdf(med_list):
     pdf.set_text_color(198, 40, 40)
     pdf.set_font('Helvetica', 'B', 7)
     pdf.multi_cell(0, 4,
-        "IMPORTANT: This schedule is for personal reference only and is NOT medical advice. "
-        "Always review this document for accuracy and verify with a pharmacist or healthcare provider.",
+        "Please verify all medication details match the patient's prescription before use.",
         align='C', fill=True)
 
     return pdf.output(dest='S').encode('latin-1')
@@ -2062,510 +2225,551 @@ def generate_pdf(med_list):
 # MAIN APPLICATION UI
 # =============================================================================
 
-st.markdown("""
-<div class="app-header">
-    <div class="app-logo">
-        <div class="app-icon">💊</div>
-        <div>
-            <p class="app-title">Medication Schedule Builder</p>
-        </div>
-    </div>
-</div>
-<div class="disclaimer-box">
-    <strong>⚠️ Important:</strong> This tool is for personal reference only and is NOT a substitute for professional medical advice.
-    Always verify your schedule with a pharmacist or healthcare provider before use.
-</div>
-""", unsafe_allow_html=True)
-
 med_count = len(st.session_state.med_list)
-verified_count = sum(1 for idx in range(med_count) if st.session_state.verification_states.get(idx, False))
-
-if med_count == 0:
-    status_text = "📋 No medications added yet — use the form below to get started"
-    status_class = "status-bar"
-elif verified_count == med_count:
-    status_text = f"✓ {med_count} medication(s) verified — Ready to download your schedule"
-    status_class = "status-bar ready"
-else:
-    status_text = f"⚠ {med_count} medication(s) added — {med_count - verified_count} still need verification"
-    status_class = "status-bar"
-
-st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
-
-
-# =============================================================================
-# ADD MEDICATION SECTION
-# =============================================================================
-
-with st.expander("Add Medication", expanded=True):
-
-    manual_mode = st.toggle(
-        "Medication Not Found? (Manual Entry)",
-        value=False,
-        help="Enable this if you cannot find your medication in the list"
-    )
-
-    if manual_mode:
-        st.markdown("""
-        <div class="manual-warning">
-            WARNING: MANUAL ENTRY MODE - Double-check spelling and dosage carefully!
-        </div>
-        """, unsafe_allow_html=True)
-
-    # MODE A: Database Search
-    if not manual_mode:
-        st.markdown("##### Search Medication Database")
-        st.caption("Type in the box below to filter medications instantly")
-
-        # Initialize session state for API results
-        if 'api_search_results' not in st.session_state:
-            st.session_state.api_search_results = []
-        if 'api_search_query' not in st.session_state:
-            st.session_state.api_search_query = ""
-
-        # Create searchable options list from local DB + any API results
-        local_options = [
-            f"{med['brand_name']} - {med['company']} ({med['category']})"
-            for med in MEDICATION_DATABASE
-        ]
-
-        api_options = [
-            f"{med['brand_name']} - {med['company']} ({med['category']})"
-            for med in st.session_state.api_search_results
-        ]
-
-        # Combine and deduplicate
-        all_options = ["-- Select a medication --"] + sorted(set(local_options + api_options))
-
-        selected_option = st.selectbox(
-            "Search and select medication",
-            options=all_options,
-            index=0,
-            placeholder="Type to search...",
-            key="med_search_selectbox"
-        )
-
-        medication_name = None
-        source_type = None
-
-        if selected_option and selected_option != "-- Select a medication --":
-            # Extract the brand name from the selection
-            brand_name = selected_option.split(" - ")[0]
-            medication_name = brand_name
-            source_type = 'database'
-
-            # Find the category for display
-            found = False
-            for med in MEDICATION_DATABASE:
-                if med['brand_name'] == brand_name:
-                    st.info(f"**Selected:** {med['brand_name']} ({med['category']})")
-                    found = True
-                    break
-
-            if not found:
-                for med in st.session_state.api_search_results:
-                    if med['brand_name'] == brand_name:
-                        st.info(f"**Selected:** {med['brand_name']} (from Health Canada)")
-                        source_type = 'health_canada'
-                        break
-
-        # Health Canada API Search Section
-        st.markdown("---")
-        st.markdown("###### Can't find your medication?")
-        st.caption("Search Health Canada's complete database (47,000+ products)")
-
-        api_col1, api_col2 = st.columns([3, 1])
-
-        with api_col1:
-            api_query = st.text_input(
-                "Search Health Canada",
-                placeholder="Enter medication name and click Search...",
-                key="hc_api_search",
-                label_visibility="collapsed"
-            )
-
-        with api_col2:
-            search_hc_clicked = st.button("Search HC", type="secondary", use_container_width=True)
-
-        if search_hc_clicked and api_query:
-            with st.spinner("Searching Health Canada database..."):
-                api_results = search_health_canada_api(api_query)
-
-                if api_results:
-                    st.session_state.api_search_results = api_results
-                    st.session_state.api_search_query = api_query
-                    st.success(f"Found {len(api_results)} result(s) from Health Canada! Select from dropdown above.")
-                    st.rerun()
-                else:
-                    st.warning("No results found. Try different spelling or use Manual Entry.")
-
-        if st.session_state.api_search_results:
-            st.caption(f"Health Canada results for '{st.session_state.api_search_query}' added to dropdown above")
-
-    # MODE B: Manual Entry
-    else:
-        st.markdown("##### Enter Medication Name")
-        medication_name = st.text_input(
-            "Medication name (check spelling carefully)",
-            placeholder="Enter exact medication name...",
-            help="Double-check the spelling before proceeding"
-        )
-        source_type = 'manual'
-
-    st.divider()
-
-    # STRENGTH INPUT
-    st.markdown("##### Dosage Strength")
-    st.caption("Enter the strength per dose (check your medication label)")
-
-    strength_col1, strength_col2 = st.columns([2, 1])
-
-    with strength_col1:
-        strength_value = st.number_input(
-            "Strength Value",
-            min_value=0.0,
-            max_value=10000.0,
-            value=0.0,
-            step=0.5,
-            format="%.1f",
-            help="Enter the numeric strength value only"
-        )
-
-    with strength_col2:
-        strength_unit = st.selectbox(
-            "Unit",
-            options=["mg", "mcg", "g", "mL", "units", "puffs", "tablet"],
-            index=0,
-            help="Select the appropriate unit"
-        )
-
-    st.divider()
-
-    # VARIABLE DOSING (Taper/Increase)
-    st.markdown("##### Variable Dosing")
-    variable_dosing = st.toggle(
-        "Taper or increase dose over time",
-        value=False,
-        help="Enable to create a schedule where the dose changes over time"
-    )
-
-    dose_schedule = None
-    if variable_dosing:
-        dosing_mode = st.radio(
-            "How would you like to set the schedule?",
-            options=["Gradual change", "Custom dates"],
-            horizontal=True,
-            help="Gradual: automatic changes every X days. Custom: set specific doses for date ranges."
-        )
-
-        if dosing_mode == "Gradual change":
-            direction = st.radio(
-                "Direction",
-                options=["Taper (decrease)", "Increase"],
-                horizontal=True
-            )
-
-            grad_col1, grad_col2 = st.columns(2)
-            with grad_col1:
-                start_dose = st.number_input(
-                    "Starting dose",
-                    min_value=0.0,
-                    max_value=10000.0,
-                    value=strength_value if strength_value > 0 else 0.0,
-                    step=0.5,
-                    format="%.1f",
-                    key="start_dose"
-                )
-            with grad_col2:
-                end_dose = st.number_input(
-                    "Ending dose",
-                    min_value=0.0,
-                    max_value=10000.0,
-                    value=0.0,
-                    step=0.5,
-                    format="%.1f",
-                    key="end_dose"
-                )
-
-            grad_col3, grad_col4 = st.columns(2)
-            with grad_col3:
-                change_amount = st.number_input(
-                    f"{'Decrease' if 'Taper' in direction else 'Increase'} by",
-                    min_value=0.1,
-                    max_value=1000.0,
-                    value=5.0,
-                    step=0.5,
-                    format="%.1f",
-                    key="change_amount"
-                )
-            with grad_col4:
-                change_days = st.number_input(
-                    "Every X days",
-                    min_value=1,
-                    max_value=30,
-                    value=7,
-                    step=1,
-                    key="change_days"
-                )
-
-            # Calculate and preview the schedule
-            is_taper = "Taper" in direction
-            doses = []
-            current = start_dose
-            day = 0
-
-            if is_taper:
-                while current > end_dose:
-                    doses.append({"day": day, "dose": current})
-                    current = max(end_dose, current - change_amount)
-                    day += change_days
-                if current == end_dose:
-                    doses.append({"day": day, "dose": end_dose})
-            else:
-                while current < end_dose:
-                    doses.append({"day": day, "dose": current})
-                    current = min(end_dose, current + change_amount)
-                    day += change_days
-                if current == end_dose:
-                    doses.append({"day": day, "dose": end_dose})
-
-            if doses:
-                st.caption("**Preview:**")
-                preview_text = " → ".join([f"Day {d['day']+1}: {d['dose']}{strength_unit}" for d in doses[:5]])
-                if len(doses) > 5:
-                    preview_text += f" → ... ({len(doses)} steps total)"
-                st.info(preview_text)
-
-            dose_schedule = {
-                "type": "gradual",
-                "direction": "taper" if is_taper else "increase",
-                "start_dose": start_dose,
-                "end_dose": end_dose,
-                "change_amount": change_amount,
-                "change_days": change_days,
-                "steps": doses
-            }
-
-        else:  # Custom dates
-            st.caption("Add dose changes for specific date ranges")
-
-            if 'custom_doses' not in st.session_state:
-                st.session_state.custom_doses = []
-
-            # Show existing custom doses
-            for i, cd in enumerate(st.session_state.custom_doses):
-                col1, col2, col3 = st.columns([2, 2, 1])
-                with col1:
-                    st.text(f"Day {cd['start_day']}-{cd['end_day']}")
-                with col2:
-                    st.text(f"{cd['dose']} {strength_unit}")
-                with col3:
-                    if st.button("✕", key=f"remove_custom_{i}"):
-                        st.session_state.custom_doses.pop(i)
-                        st.rerun()
-
-            # Add new custom dose
-            with st.container():
-                cc1, cc2, cc3 = st.columns([1, 1, 1])
-                with cc1:
-                    custom_start = st.number_input("From day", min_value=1, value=1, key="custom_start")
-                with cc2:
-                    custom_end = st.number_input("To day", min_value=1, value=7, key="custom_end")
-                with cc3:
-                    custom_dose = st.number_input("Dose", min_value=0.0, value=strength_value, step=0.5, format="%.1f", key="custom_dose_val")
-
-                if st.button("➕ Add date range", use_container_width=True):
-                    st.session_state.custom_doses.append({
-                        "start_day": custom_start,
-                        "end_day": custom_end,
-                        "dose": custom_dose
-                    })
-                    st.rerun()
-
-            if st.session_state.custom_doses:
-                dose_schedule = {
-                    "type": "custom",
-                    "ranges": st.session_state.custom_doses.copy()
-                }
-
-    st.divider()
-
-    # TIME SLOTS
-    st.markdown("##### Schedule (Select all that apply)")
-    st.caption("Check each time of day this medication should be taken")
-
-    time_col1, time_col2 = st.columns(2)
-
-    with time_col1:
-        morning = st.checkbox("Morning (6-9 AM)", key="time_morning")
-        noon = st.checkbox("Noon (11 AM-1 PM)", key="time_noon")
-
-    with time_col2:
-        evening = st.checkbox("Evening (5-7 PM)", key="time_evening")
-        bedtime = st.checkbox("Bedtime (9-11 PM)", key="time_bedtime")
-
-    selected_times = []
-    if morning: selected_times.append("Morning")
-    if noon: selected_times.append("Noon")
-    if evening: selected_times.append("Evening")
-    if bedtime: selected_times.append("Bedtime")
-
-    st.divider()
-
-    # VALIDATION
-    validation_errors = []
-
-    if not medication_name:
-        validation_errors.append("Select or enter a medication name")
-    if strength_value <= 0:
-        validation_errors.append("Enter a valid strength value (> 0)")
-    if not selected_times:
-        validation_errors.append("Select at least one time slot")
-
-    if validation_errors:
-        st.warning("**Complete the following to add medication:**\n- " + "\n- ".join(validation_errors))
-
-    add_disabled = len(validation_errors) > 0
-
-    if st.button(
-        "Add Medication to Schedule",
-        type="primary",
-        disabled=add_disabled,
-        use_container_width=True
-    ):
-        new_med = {
-            'name': medication_name,
-            'strength_value': strength_value,
-            'strength_unit': strength_unit,
-            'time_slots': selected_times,
-            'source': source_type,
-            'added_at': datetime.now().isoformat(),
-            'variable_dosing': variable_dosing,
-            'dose_schedule': dose_schedule
-        }
-
-        st.session_state.med_list.append(new_med)
-        # Clear custom doses for next entry
-        if 'custom_doses' in st.session_state:
-            st.session_state.custom_doses = []
-        reset_all_verifications()
-        st.toast(f"'{medication_name}' added to schedule!")
-        st.rerun()
-
-
-# =============================================================================
-# CALENDAR VIEW SECTION
-# =============================================================================
-
-if st.session_state.med_list:
-    st.markdown('<p class="section-header">📅 Weekly Preview</p>', unsafe_allow_html=True)
-    calendar_html = generate_calendar_html(st.session_state.med_list)
-    st.markdown(calendar_html, unsafe_allow_html=True)
-
-
-# =============================================================================
-# REVIEW LIST SECTION
-# =============================================================================
-
-st.markdown('<p class="section-header">📋 Your Medications</p>', unsafe_allow_html=True)
-
-if not st.session_state.med_list:
-    st.markdown("""
-    <div class="info-card" style="text-align: center; padding: 2rem;">
-        <p style="font-size: 2rem; margin-bottom: 0.5rem;">💊</p>
-        <p style="color: #6b7280; margin: 0;">No medications added yet.<br>Use the form above to get started.</p>
+has_meds = med_count > 0
+all_meds_verified = check_all_verified() if has_meds else False
+preview_btn_class = "app-bar-btn" if (has_meds and all_meds_verified) else "app-bar-btn disabled"
+
+# Initialize preview modal state
+if 'show_preview_modal' not in st.session_state:
+    st.session_state.show_preview_modal = False
+
+# Compact App Bar with Preview button integrated
+st.markdown(f'''
+<div class="app-bar">
+    <div class="app-bar-left">
+        <div class="app-bar-icon">💊</div>
+        <span class="app-bar-title">Medication Schedule</span>
     </div>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 1rem;">
-        ✓ Verify each medication before downloading your schedule
-    </p>
-    """, unsafe_allow_html=True)
+</div>
+''', unsafe_allow_html=True)
 
-    for idx, med in enumerate(st.session_state.med_list):
-        card_class = "med-card manual" if med['source'] == 'manual' else "med-card verified"
-        badge_class = "med-badge manual" if med['source'] == 'manual' else "med-badge verified"
-        badge_icon = "✎" if med['source'] == 'manual' else "✓"
-        badge_text = "Manual" if med['source'] == 'manual' else "Verified"
+# Preview button positioned to align with app bar
+st.markdown('<div class="preview-btn-row">', unsafe_allow_html=True)
+preview_col1, preview_col2 = st.columns([2.5, 1])
+with preview_col2:
+    preview_disabled = not (has_meds and all_meds_verified)
+    if st.button("📄 Preview", key="app_bar_preview", disabled=preview_disabled, use_container_width=True):
+        st.session_state.show_preview_modal = True
+        st.rerun()
+st.markdown('</div>', unsafe_allow_html=True)
 
-        time_slots_html = "".join([f'<span class="time-slot">{slot}</span>' for slot in med['time_slots']])
+# Slim warning banner
+st.markdown('''
+<div class="warning-banner">
+    <span class="warning-banner-icon">⚠️</span>
+    <span class="warning-banner-text">Verify against patient's prescription before printing.</span>
+</div>
+''', unsafe_allow_html=True)
 
-        # Build dose display
-        if med.get('variable_dosing') and med.get('dose_schedule'):
-            schedule = med['dose_schedule']
-            if schedule['type'] == 'gradual':
-                direction = "↓" if schedule['direction'] == 'taper' else "↑"
-                dose_html = f"{schedule['start_dose']} → {schedule['end_dose']} {med['strength_unit']} {direction}"
-            else:
-                dose_html = f"Variable dosing ({len(schedule.get('ranges', []))} ranges)"
-        else:
-            dose_html = f"{med['strength_value']} {med['strength_unit']}"
 
-        st.markdown(f"""
-        <div class="{card_class}">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                <div class="med-name">{med['name']}</div>
-                <span class="{badge_class}">{badge_icon} {badge_text}</span>
+# =============================================================================
+# ADD MEDICATION CARD
+# =============================================================================
+
+# Initialize session states
+if 'api_search_results' not in st.session_state:
+    st.session_state.api_search_results = []
+if 'selected_medication' not in st.session_state:
+    st.session_state.selected_medication = None
+if 'manual_entry_mode' not in st.session_state:
+    st.session_state.manual_entry_mode = False
+if 'dose_value' not in st.session_state:
+    st.session_state.dose_value = 0.0
+if 'dose_unit' not in st.session_state:
+    st.session_state.dose_unit = "mg"
+if 'selected_times' not in st.session_state:
+    st.session_state.selected_times = []
+if 'custom_doses' not in st.session_state:
+    st.session_state.custom_doses = []
+
+# Card container
+st.markdown('''
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Add medication</h2>
+        <p class="card-subtitle">Search and add dosing schedule</p>
+    </div>
+</div>
+''', unsafe_allow_html=True)
+
+# Using a container for the card content
+with st.container():
+
+    # === MEDICATION SELECTION ===
+    if st.session_state.selected_medication:
+        # Show selected medication chip
+        med = st.session_state.selected_medication
+        med_name = med.get('brand_name', med.get('name', 'Unknown'))
+        st.markdown(f'''
+            <div class="selected-chip">
+                <span class="selected-chip-icon">✓</span>
+                <span class="selected-chip-name">{med_name}</span>
             </div>
-            <div class="med-details">
-                {dose_html}
-            </div>
-            <div class="time-slots">{time_slots_html}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        ''', unsafe_allow_html=True)
 
-        verify_col, remove_col = st.columns([3, 1])
-
-        with verify_col:
-            verified = st.checkbox(
-                f"I confirm '{med['name']}' details are correct",
-                key=f"verify_{idx}",
-                value=st.session_state.verification_states.get(idx, False)
-            )
-            st.session_state.verification_states[idx] = verified
-
-        with remove_col:
-            if st.button("🗑️ Remove", key=f"remove_{idx}", use_container_width=True):
-                st.session_state.med_list.pop(idx)
-                reset_all_verifications()
-                st.toast("Medication removed")
+        change_col1, change_col2 = st.columns([3, 1])
+        with change_col2:
+            if st.button("Change", type="secondary", key="change_med", use_container_width=True):
+                st.session_state.selected_medication = None
+                st.session_state.dose_value = 0.0
+                st.session_state.selected_times = []
+                st.session_state.manual_entry_mode = False
                 st.rerun()
 
+    elif st.session_state.manual_entry_mode:
+        # Manual entry mode
+        st.markdown('<p class="section-label">Medication name</p>', unsafe_allow_html=True)
+        manual_name = st.text_input(
+            "Medication name",
+            placeholder="Enter medication name...",
+            key="manual_med_input",
+            label_visibility="collapsed"
+        )
+        if manual_name:
+            st.session_state.selected_medication = {
+                'brand_name': manual_name,
+                'name': manual_name,
+                'category': 'Manual Entry',
+                'source': 'manual'
+            }
+            st.rerun()
+
+        if st.button("← Back to search", type="secondary"):
+            st.session_state.manual_entry_mode = False
+            st.rerun()
+
+    else:
+        # Search mode (default)
+        search_query = st.text_input(
+            "Search medication",
+            placeholder="Search medication...",
+            key="med_search_input",
+            label_visibility="collapsed"
+        )
+
+        # Show filtered results when typing (min 2 chars)
+        if search_query and len(search_query) >= 2:
+            query_lower = search_query.lower()
+            local_matches = [
+                med for med in MEDICATION_DATABASE
+                if query_lower in med['brand_name'].lower()
+            ][:6]
+
+            api_matches = [
+                med for med in st.session_state.api_search_results
+                if query_lower in med['brand_name'].lower()
+            ][:4]
+
+            all_matches = local_matches + api_matches
+
+            if all_matches:
+                st.markdown('<div class="search-results">', unsafe_allow_html=True)
+                for i, med in enumerate(all_matches):
+                    cat = med.get('category', '')
+                    if st.button(
+                        f"{med['brand_name']} — {cat}",
+                        key=f"med_result_{i}",
+                        use_container_width=True
+                    ):
+                        st.session_state.selected_medication = {
+                            **med,
+                            'source': 'health_canada' if med in st.session_state.api_search_results else 'database'
+                        }
+                        st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.caption("No matches found.")
+
+        # Links row
+        link_col1, link_col2 = st.columns(2)
+        with link_col1:
+            if st.button("Not found? Add manually", key="manual_entry_btn"):
+                st.session_state.manual_entry_mode = True
+                st.rerun()
+        with link_col2:
+            with st.expander("Search Health Canada", expanded=False):
+                hc_query = st.text_input("", placeholder="Search 47K+ products...", key="hc_search", label_visibility="collapsed")
+                if st.button("Search", key="hc_search_btn", use_container_width=True):
+                    if hc_query:
+                        with st.spinner("Searching..."):
+                            api_results = search_health_canada_api(hc_query)
+                            if api_results:
+                                st.session_state.api_search_results = api_results
+                                st.rerun()
+                            else:
+                                st.warning("No results.")
 
 # =============================================================================
-# PDF PREVIEW & DOWNLOAD SECTION
+# DOSE SECTION (shown after medication selected)
 # =============================================================================
 
-st.markdown('<p class="section-header">📥 Download Calendar</p>', unsafe_allow_html=True)
+if st.session_state.selected_medication:
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">Dose</p>', unsafe_allow_html=True)
 
-all_verified = check_all_verified()
-has_medications = len(st.session_state.med_list) > 0
+    dose_col1, dose_col2 = st.columns([2, 1])
+    with dose_col1:
+        dose_val = st.number_input(
+            "Amount",
+            min_value=0.0,
+            max_value=10000.0,
+            value=st.session_state.dose_value,
+            step=1.0,
+            format="%.1f",
+            key="dose_amount_input",
+            label_visibility="collapsed",
+            placeholder="Amount"
+        )
+        if dose_val != st.session_state.dose_value:
+            st.session_state.dose_value = dose_val
 
-if not has_medications:
-    st.info("Add medications above to generate your printable calendar.")
-elif not all_verified:
-    unverified_count = len(st.session_state.med_list) - verified_count
-    st.warning(f"Please verify {unverified_count} medication(s) above before downloading.")
+    with dose_col2:
+        unit_options = ["mg", "mcg", "g", "mL", "units", "puffs", "tablet"]
+        current_idx = unit_options.index(st.session_state.dose_unit) if st.session_state.dose_unit in unit_options else 0
+        dose_unit = st.selectbox(
+            "Unit",
+            options=unit_options,
+            index=current_idx,
+            key="dose_unit_select",
+            label_visibility="collapsed"
+        )
+        if dose_unit != st.session_state.dose_unit:
+            st.session_state.dose_unit = dose_unit
+
+    # Advanced options (tapering) in expander
+    dose_schedule = None
+    variable_dosing = False
+
+    with st.expander("Advanced: Variable dosing", expanded=False):
+        variable_dosing = st.checkbox("Enable variable/tapering dose", key="var_dose_check")
+
+        if variable_dosing:
+            dosing_mode = st.radio(
+                "Mode",
+                options=["Gradual change", "Custom dates"],
+                horizontal=True,
+                key="dosing_mode_radio"
+            )
+
+            if dosing_mode == "Gradual change":
+                direction = st.radio(
+                    "Direction",
+                    options=["Taper (decrease)", "Increase"],
+                    horizontal=True,
+                    key="direction_radio"
+                )
+
+                g_col1, g_col2 = st.columns(2)
+                with g_col1:
+                    start_dose = st.number_input("Start", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="grad_start")
+                with g_col2:
+                    end_dose = st.number_input("End", min_value=0.0, value=0.0, step=0.5, format="%.1f", key="grad_end")
+
+                g_col3, g_col4 = st.columns(2)
+                with g_col3:
+                    change_amt = st.number_input("Change by", min_value=0.1, value=5.0, step=0.5, format="%.1f", key="grad_change")
+                with g_col4:
+                    change_days = st.number_input("Every X days", min_value=1, value=7, step=1, key="grad_days")
+
+                # Calculate schedule
+                is_taper = "Taper" in direction
+                doses = []
+                current = start_dose
+                day = 0
+                if is_taper:
+                    while current > end_dose and len(doses) < 50:
+                        doses.append({"day": day, "dose": current})
+                        current = max(end_dose, current - change_amt)
+                        day += change_days
+                    if current == end_dose:
+                        doses.append({"day": day, "dose": end_dose})
+                else:
+                    while current < end_dose and len(doses) < 50:
+                        doses.append({"day": day, "dose": current})
+                        current = min(end_dose, current + change_amt)
+                        day += change_days
+                    if current == end_dose:
+                        doses.append({"day": day, "dose": end_dose})
+
+                if doses:
+                    preview = " → ".join([f"Day {d['day']+1}: {d['dose']}" for d in doses[:4]])
+                    if len(doses) > 4:
+                        preview += f" ... ({len(doses)} steps)"
+                    st.caption(preview)
+
+                dose_schedule = {
+                    "type": "gradual",
+                    "direction": "taper" if is_taper else "increase",
+                    "start_dose": start_dose,
+                    "end_dose": end_dose,
+                    "change_amount": change_amt,
+                    "change_days": change_days,
+                    "steps": doses
+                }
+
+            else:  # Custom dates
+                for i, cd in enumerate(st.session_state.custom_doses):
+                    c1, c2, c3 = st.columns([2, 2, 1])
+                    with c1:
+                        st.text(f"Day {cd['start_day']}-{cd['end_day']}")
+                    with c2:
+                        st.text(f"{cd['dose']} {st.session_state.dose_unit}")
+                    with c3:
+                        if st.button("✕", key=f"rm_cd_{i}"):
+                            st.session_state.custom_doses.pop(i)
+                            st.rerun()
+
+                cc1, cc2, cc3 = st.columns(3)
+                with cc1:
+                    cd_start = st.number_input("From", min_value=1, value=1, key="cd_from")
+                with cc2:
+                    cd_end = st.number_input("To", min_value=1, value=7, key="cd_to")
+                with cc3:
+                    cd_dose = st.number_input("Dose", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="cd_dose")
+
+                if st.button("Add range", use_container_width=True, key="add_cd_range"):
+                    st.session_state.custom_doses.append({"start_day": cd_start, "end_day": cd_end, "dose": cd_dose})
+                    st.rerun()
+
+                if st.session_state.custom_doses:
+                    dose_schedule = {"type": "custom", "ranges": st.session_state.custom_doses.copy()}
+
+# =============================================================================
+# TIMES SECTION (shown after medication selected)
+# =============================================================================
+
+if st.session_state.selected_medication:
+    st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+    st.markdown('<p class="section-label">Times</p>', unsafe_allow_html=True)
+    st.markdown('<p class="section-helper">Tap to select</p>', unsafe_allow_html=True)
+
+    # Time chip buttons in 2x2 grid
+    time_options = [
+        ("Morning", "☀️ Morning"),
+        ("Noon", "🕛 Noon"),
+        ("Evening", "🌙 Evening"),
+        ("Bedtime", "🛏️ Bedtime")
+    ]
+
+    chip_cols = st.columns(2)
+    for i, (key, label) in enumerate(time_options):
+        with chip_cols[i % 2]:
+            is_selected = key in st.session_state.selected_times
+            btn_type = "primary" if is_selected else "secondary"
+            display_label = f"✓ {label}" if is_selected else label
+
+            if st.button(display_label, key=f"time_chip_{key}", use_container_width=True, type=btn_type):
+                if is_selected:
+                    st.session_state.selected_times.remove(key)
+                else:
+                    st.session_state.selected_times.append(key)
+                st.rerun()
+
+# =============================================================================
+# STICKY CTA BAR
+# =============================================================================
+
+# Determine medication name and source
+medication_name = None
+source_type = None
+if st.session_state.selected_medication:
+    medication_name = st.session_state.selected_medication.get('brand_name', st.session_state.selected_medication.get('name'))
+    source_type = st.session_state.selected_medication.get('source', 'database')
+
+# Validation
+validation_errors = []
+if not medication_name:
+    validation_errors.append("Select a medication")
+if st.session_state.dose_value <= 0:
+    validation_errors.append("Enter dose amount")
+if not st.session_state.selected_times:
+    validation_errors.append("Select at least one time")
+
+add_disabled = len(validation_errors) > 0
+
+# Build summary
+if medication_name:
+    times_str = ", ".join(st.session_state.selected_times) if st.session_state.selected_times else "No times"
+    summary = f"{medication_name} • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}"
 else:
-    st.success("✓ All medications verified — ready to download!")
+    summary = "Select a medication to continue"
 
+# Show error if needed
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+if validation_errors and medication_name:
+    error_text = " · ".join(validation_errors)
+    st.markdown(f'<p class="sticky-bar-error">{error_text}</p>', unsafe_allow_html=True)
+
+# Summary line
+st.markdown(f'<p class="sticky-bar-summary">{summary}</p>', unsafe_allow_html=True)
+
+# Add button
 if st.button(
-    "📅 Download Calendar PDF",
+    "Add Medication",
     type="primary",
-    disabled=not (has_medications and all_verified),
-    use_container_width=True
+    disabled=add_disabled,
+    use_container_width=True,
+    key="add_med_btn"
 ):
-    with st.spinner("Generating..."):
-        pdf_bytes = generate_pdf(st.session_state.med_list)
+    # Build dose schedule if variable dosing was used
+    final_dose_schedule = None
+    final_variable_dosing = False
+    if 'var_dose_check' in st.session_state and st.session_state.var_dose_check:
+        final_variable_dosing = True
+        if 'dose_schedule' in dir() and dose_schedule:
+            final_dose_schedule = dose_schedule
+
+    new_med = {
+        'name': medication_name,
+        'strength_value': st.session_state.dose_value,
+        'strength_unit': st.session_state.dose_unit,
+        'time_slots': st.session_state.selected_times.copy(),
+        'source': source_type,
+        'added_at': datetime.now().isoformat(),
+        'variable_dosing': final_variable_dosing,
+        'dose_schedule': final_dose_schedule
+    }
+
+    st.session_state.med_list.append(new_med)
+
+    # Reset form state
+    st.session_state.selected_medication = None
+    st.session_state.dose_value = 0.0
+    st.session_state.selected_times = []
+    st.session_state.custom_doses = []
+    st.session_state.manual_entry_mode = False
+
+    reset_all_verifications()
+    st.toast(f"'{medication_name}' added!")
+    st.rerun()
+
+
+# =============================================================================
+# PREVIEW CARD (shown when preview button is clicked)
+# =============================================================================
+
+if st.session_state.show_preview_modal and has_meds and all_meds_verified:
+    # Generate PDF
+    pdf_bytes = generate_pdf(st.session_state.med_list)
+    pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+
+    # Preview card header
+    st.markdown('''
+    <div class="preview-card">
+        <div class="preview-card-header">
+            <span class="preview-card-title">📄 Schedule Preview</span>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    # Embedded PDF viewer
+    st.markdown(f'''
+        <iframe
+            src="data:application/pdf;base64,{pdf_base64}"
+            class="preview-iframe"
+            title="PDF Preview">
+        </iframe>
+    </div>
+    ''', unsafe_allow_html=True)
+
+    # Action buttons
+    btn_col1, btn_col2, btn_col3 = st.columns(3)
+
+    with btn_col1:
+        # Print button - opens PDF in new tab
+        st.markdown(f'''
+            <a href="data:application/pdf;base64,{pdf_base64}"
+               target="_blank"
+               style="display: inline-flex; align-items: center; justify-content: center;
+                      width: 100%; padding: 0.75rem 1rem;
+                      background-color: var(--primary); color: white;
+                      text-decoration: none; border-radius: var(--radius-md);
+                      font-weight: 500; font-size: var(--text-sm);">
+                🖨️ Print
+            </a>
+        ''', unsafe_allow_html=True)
+
+    with btn_col2:
         st.download_button(
-            label="💾 Save PDF",
+            label="💾 Download",
             data=pdf_bytes,
             file_name=f"Medication_Calendar_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
-        st.toast("Calendar generated!")
+
+    with btn_col3:
+        if st.button("✕ Close", key="close_preview", use_container_width=True):
+            st.session_state.show_preview_modal = False
+            st.rerun()
+
+    st.markdown('<div style="margin-bottom: var(--space-4);"></div>', unsafe_allow_html=True)
+
+
+# =============================================================================
+# PATIENT MEDICATIONS LIST
+# =============================================================================
+
+# List header
+st.markdown('''
+<div class="med-list-header">
+    <span class="med-list-title">Patient medications</span>
+</div>
+''', unsafe_allow_html=True)
+
+if not st.session_state.med_list:
+    # Empty state (only here, not elsewhere)
+    st.markdown('''
+    <div class="empty-state">
+        <div class="empty-state-icon">💊</div>
+        <div class="empty-state-title">No medications yet</div>
+        <div class="empty-state-text">Add one above to generate the schedule</div>
+    </div>
+    ''', unsafe_allow_html=True)
+else:
+    for idx, med in enumerate(st.session_state.med_list):
+        # Build dose display
+        if med.get('variable_dosing') and med.get('dose_schedule'):
+            schedule = med['dose_schedule']
+            if schedule['type'] == 'gradual':
+                direction = "↓" if schedule['direction'] == 'taper' else "↑"
+                dose_str = f"{schedule['start_dose']}→{schedule['end_dose']} {med['strength_unit']} {direction}"
+            else:
+                dose_str = f"Variable ({len(schedule.get('ranges', []))} ranges)"
+        else:
+            dose_str = f"{med['strength_value']} {med['strength_unit']}"
+
+        # Build times string
+        times_str = " · ".join(med.get('time_slots', []))
+
+        # Render medication item card
+        st.markdown(f'''
+        <div class="med-item">
+            <div class="med-item-info">
+                <div class="med-item-name">{med['name']}</div>
+                <div class="med-item-details">{dose_str} · {times_str}</div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        # Actions row
+        action_col1, action_col2 = st.columns([4, 1])
+
+        with action_col1:
+            verified = st.checkbox(
+                f"Verified",
+                key=f"verify_{idx}",
+                value=st.session_state.verification_states.get(idx, False)
+            )
+            st.session_state.verification_states[idx] = verified
+
+        with action_col2:
+            if st.button("🗑️", key=f"remove_{idx}", help="Remove"):
+                st.session_state.med_list.pop(idx)
+                reset_all_verifications()
+                st.toast("Removed")
+                st.rerun()
 
 
 # =============================================================================
@@ -2575,8 +2779,8 @@ if st.button(
 st.markdown("""
 <div class="app-footer">
     <p style="margin: 0; line-height: 1.6;">
-        For personal reference only · Not medical advice<br>
-        Always review output for accuracy and consult a healthcare provider
+        For pharmacy use<br>
+        Always verify against patient prescription
     </p>
 </div>
 """, unsafe_allow_html=True)
