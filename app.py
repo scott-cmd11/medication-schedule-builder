@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-RxFlow Canada - Safety-Critical Medication Schedule Builder
+Medication Schedule Builder
 A mobile-first Streamlit application with strict "Checks & Balances"
 """
 
@@ -16,230 +16,386 @@ import re
 # =============================================================================
 
 st.set_page_config(
-    page_title="RxFlow Canada",
-    page_icon=":pill:",
+    page_title="Medication Schedule Builder",
+    page_icon="💊",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    :root {
+        --primary: #0891b2;
+        --primary-dark: #0e7490;
+        --primary-light: #22d3ee;
+        --success: #059669;
+        --success-light: #d1fae5;
+        --warning: #d97706;
+        --warning-light: #fef3c7;
+        --danger: #dc2626;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-500: #6b7280;
+        --gray-700: #374151;
+        --gray-900: #111827;
+    }
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
-        max-width: 100%;
+    .stApp {
+        background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 50%, #f0f9ff 100%);
     }
 
+    .block-container {
+        padding: 1rem 1rem;
+        max-width: 420px !important;
+        margin: 0 auto;
+    }
+
+    /* Force narrow width on all content */
+    .stMainBlockContainer {
+        max-width: 420px !important;
+        margin: 0 auto;
+    }
+
+    /* Modern Button Styles */
     .stButton > button {
-        min-height: 48px;
-        font-size: 1rem;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
+        min-height: 40px;
+        font-size: 0.85rem;
         border-radius: 8px;
-        width: 100%;
+        border: none;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+    }
+
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     }
 
     .stCheckbox > label {
-        min-height: 44px;
+        font-family: 'Inter', sans-serif;
+        min-height: 36px;
         display: flex;
         align-items: center;
+        font-size: 0.8rem;
+        color: var(--gray-700);
+    }
+
+    /* Expander Styling */
+    .streamlit-expanderHeader {
+        font-family: 'Inter', sans-serif;
+        font-weight: 600;
         font-size: 1rem;
-    }
-
-    .verified-card {
-        background: linear-gradient(135deg, #e8f5e9 0%, #e3f2fd 100%);
-        border-left: 5px solid #2e7d32;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .verified-badge {
-        background-color: #2e7d32;
-        color: white;
-        padding: 4px 12px;
+        color: var(--gray-900);
+        background-color: white;
         border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: bold;
     }
 
-    .manual-card {
-        background: linear-gradient(135deg, #fff3e0 0%, #ffebee 100%);
-        border-left: 5px solid #e65100;
-        padding: 1rem;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .manual-badge {
-        background-color: #e65100;
-        color: white;
-        padding: 4px 12px;
+    /* Header */
+    .app-header {
+        background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
+        padding: 1.25rem 1rem;
         border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: bold;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 20px rgba(8, 145, 178, 0.25);
     }
 
-    .manual-warning {
-        background-color: #ff5722;
+    .app-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .app-icon {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .app-title {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 700;
         color: white;
-        padding: 12px;
+        margin: 0;
+        letter-spacing: -0.5px;
+    }
+
+    .app-subtitle {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.85);
+        margin-top: 0.25rem;
+        font-weight: 400;
+    }
+
+    /* Status Bar */
+    .status-bar {
+        background: white;
+        border: 1px solid var(--gray-200);
+        padding: 10px 14px;
         border-radius: 8px;
-        margin-bottom: 1rem;
         text-align: center;
-        font-weight: bold;
+        margin-bottom: 1rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        font-weight: 500;
+        color: var(--gray-700);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
-    .stButton > button:disabled {
-        background-color: #9e9e9e !important;
-        color: #616161 !important;
-        cursor: not-allowed;
+    .status-bar.ready {
+        background: var(--success-light);
+        border-color: var(--success);
+        color: var(--success);
+    }
+
+    /* Medication Cards */
+    .med-card {
+        background: white;
+        border-radius: 10px;
+        padding: 0.875rem;
+        margin-bottom: 0.75rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border: 1px solid var(--gray-200);
+        transition: all 0.2s ease;
+    }
+
+    .med-card:hover {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        border-color: var(--gray-300);
+    }
+
+    .med-card.verified {
+        border-left: 3px solid var(--success);
+    }
+
+    .med-card.manual {
+        border-left: 3px solid var(--warning);
+        background: linear-gradient(135deg, white 0%, #fffbeb 100%);
+    }
+
+    .med-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .med-badge.verified {
+        background: var(--success-light);
+        color: var(--success);
+    }
+
+    .med-badge.manual {
+        background: var(--warning-light);
+        color: var(--warning);
     }
 
     .med-name {
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: #1a237e;
-        margin-bottom: 0.5rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--gray-900);
+        margin-bottom: 0.15rem;
     }
 
     .med-details {
-        font-size: 0.95rem;
-        color: #424242;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.8rem;
+        color: var(--gray-500);
     }
 
     .time-slots {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 5px;
         margin-top: 0.5rem;
     }
 
     .time-slot {
-        background-color: #1976d2;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         color: white;
         padding: 4px 10px;
-        border-radius: 4px;
-        font-size: 0.85rem;
+        border-radius: 5px;
+        font-size: 0.7rem;
+        font-family: 'Inter', sans-serif;
+        font-weight: 500;
     }
 
-    .verify-section {
-        background-color: #fff8e1;
-        padding: 0.75rem;
-        border-radius: 4px;
-        border: 2px dashed #ffc107;
-        margin-top: 0.5rem;
-    }
-
-    .app-header {
-        text-align: center;
-        padding: 1rem 0;
-        border-bottom: 3px solid #1976d2;
-        margin-bottom: 1.5rem;
-    }
-
-    .app-title {
-        font-size: 1.75rem;
-        font-weight: bold;
-        color: #1976d2;
-        margin: 0;
-    }
-
-    .app-subtitle {
-        font-size: 0.9rem;
-        color: #616161;
-        margin-top: 0.25rem;
-    }
-
-    .status-bar {
-        background-color: #263238;
-        color: white;
-        padding: 8px 16px;
-        border-radius: 4px;
-        text-align: center;
+    /* Manual Entry Warning */
+    .manual-warning {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #f59e0b;
+        color: #92400e;
+        padding: 14px 18px;
+        border-radius: 10px;
         margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 600;
+        font-family: 'Inter', sans-serif;
         font-size: 0.9rem;
     }
 
+    /* Verify Section */
+    .verify-section {
+        background: #fefce8;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px dashed #eab308;
+        margin-top: 0.75rem;
+    }
+
+    /* Calendar Styles */
     .calendar-container {
-        margin: 1rem 0;
+        margin: 0.75rem 0;
         overflow-x: auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 
     .calendar-table {
         width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
     }
 
     .calendar-table th {
-        background-color: #1976d2;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
         color: white;
-        padding: 12px 8px;
+        padding: 8px 4px;
         text-align: center;
-        font-weight: bold;
-        border: 1px solid #1565c0;
+        font-weight: 600;
+        font-size: 0.7rem;
     }
 
     .calendar-table td {
-        border: 1px solid #e0e0e0;
-        padding: 8px;
+        border: 1px solid var(--gray-200);
+        padding: 6px;
         vertical-align: top;
-        min-width: 120px;
-        height: 80px;
+        min-width: 45px;
+        height: 60px;
+        background: white;
     }
 
     .calendar-table .time-header {
-        background-color: #f5f5f5;
-        font-weight: bold;
+        background: var(--gray-50);
+        font-weight: 600;
         text-align: center;
-        width: 100px;
+        width: 55px;
+        color: var(--gray-700);
+        font-size: 0.65rem;
     }
 
     .calendar-med {
-        background-color: #e3f2fd;
-        border-left: 3px solid #1976d2;
-        padding: 4px 6px;
+        background: #e0f2fe;
+        border-left: 2px solid var(--primary);
+        padding: 3px 4px;
         margin: 2px 0;
-        border-radius: 3px;
-        font-size: 0.8rem;
+        border-radius: 4px;
+        font-size: 0.6rem;
     }
 
     .calendar-med.manual {
-        background-color: #fff3e0;
-        border-left-color: #e65100;
+        background: #fef3c7;
+        border-left-color: var(--warning);
     }
 
     .calendar-med .med-title {
-        font-weight: bold;
-        color: #1a237e;
+        font-weight: 600;
+        color: var(--gray-900);
     }
 
     .calendar-med .med-dose {
-        color: #616161;
-        font-size: 0.75rem;
+        color: var(--gray-500);
+        font-size: 0.55rem;
     }
 
-    .preview-container {
-        background-color: #fafafa;
-        border: 2px solid #1976d2;
-        border-radius: 8px;
+    /* Section Headers */
+    .section-header {
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--gray-900);
+        margin: 1.25rem 0 0.75rem 0;
+        padding-bottom: 0.4rem;
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    /* Info Cards */
+    .info-card {
+        background: white;
+        border-radius: 10px;
         padding: 1rem;
-        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border: 1px solid var(--gray-200);
     }
 
-    .preview-header {
-        background-color: #1976d2;
-        color: white;
-        padding: 10px;
-        margin: -1rem -1rem 1rem -1rem;
-        border-radius: 6px 6px 0 0;
+    /* Footer */
+    .app-footer {
         text-align: center;
-        font-weight: bold;
+        padding: 1rem;
+        color: var(--gray-500);
+        font-size: 0.7rem;
+        font-family: 'Inter', sans-serif;
+        margin-top: 1.5rem;
+        border-top: 1px solid var(--gray-200);
+    }
+
+    /* Disclaimer Box */
+    .disclaimer-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 1rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.7rem;
+        color: #92400e;
+        line-height: 1.4;
+    }
+
+    /* Form inputs */
+    .stSelectbox > div > div {
+        border-radius: 8px;
+    }
+
+    .stTextInput > div > div {
+        border-radius: 8px;
+    }
+
+    .stNumberInput > div > div {
+        border-radius: 8px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -957,7 +1113,6 @@ MEDICATION_DATABASE = [
     {"brand_name": "DOVONEX", "company": "LEO Pharma", "category": "Psoriasis"},
     {"brand_name": "DOVOBET", "company": "LEO Pharma", "category": "Psoriasis"},
     {"brand_name": "ENSTILAR", "company": "LEO Pharma", "category": "Psoriasis"},
-]
 
     # Cardiovascular
     {"brand_name": "LIPITOR", "company": "Pfizer", "category": "Cardiovascular"},
@@ -1447,7 +1602,7 @@ def search_medications(query):
                 'brand_name': med['brand_name'],
                 'company': med['company'],
                 'category': med['category'],
-                'source': 'RxFlow Database'
+                'source': 'Local Database'
             })
 
     # Sort by how well it matches (starts with query first)
@@ -1553,6 +1708,41 @@ def check_all_verified():
     return True
 
 
+def get_dose_for_day(med, day_offset):
+    """Get the dose for a medication on a specific day (0 = today, 1 = tomorrow, etc.)."""
+    if not med.get('variable_dosing') or not med.get('dose_schedule'):
+        return med['strength_value']
+
+    schedule = med['dose_schedule']
+
+    if schedule['type'] == 'gradual':
+        # Find which step we're on based on day offset
+        steps = schedule.get('steps', [])
+        if not steps:
+            return med['strength_value']
+
+        # Find the appropriate step for this day
+        current_dose = steps[0]['dose']
+        for step in steps:
+            if day_offset >= step['day']:
+                current_dose = step['dose']
+            else:
+                break
+        return current_dose
+
+    elif schedule['type'] == 'custom':
+        # Check custom date ranges (day 1 = today, so offset 0 = day 1)
+        day_num = day_offset + 1
+        ranges = schedule.get('ranges', [])
+        for r in ranges:
+            if r['start_day'] <= day_num <= r['end_day']:
+                return r['dose']
+        # If no range matches, return the base strength
+        return med['strength_value']
+
+    return med['strength_value']
+
+
 def generate_calendar_html(med_list):
     """Generate an HTML calendar view of the medication schedule."""
     if not med_list:
@@ -1578,15 +1768,25 @@ def generate_calendar_html(med_list):
 
     for slot in time_slots:
         html += f'<tr><td class="time-header">{time_labels[slot]}</td>'
-        for _ in days:
+        for day_idx, _ in enumerate(days):
             html += '<td>'
             for med in med_list:
                 if slot in med['time_slots']:
                     card_class = 'calendar-med manual' if med['source'] == 'manual' else 'calendar-med'
+                    # Get dose for this specific day (supports variable dosing)
+                    day_dose = get_dose_for_day(med, day_idx)
+                    # Add indicator if dose is changing
+                    dose_indicator = ""
+                    if med.get('variable_dosing') and med.get('dose_schedule'):
+                        prev_dose = get_dose_for_day(med, day_idx - 1) if day_idx > 0 else day_dose
+                        if day_dose < prev_dose:
+                            dose_indicator = " ↓"
+                        elif day_dose > prev_dose:
+                            dose_indicator = " ↑"
                     html += f'''
                     <div class="{card_class}">
                         <div class="med-title">{med['name']}</div>
-                        <div class="med-dose">{med['strength_value']} {med['strength_unit']}</div>
+                        <div class="med-dose">{day_dose} {med['strength_unit']}{dose_indicator}</div>
                     </div>
                     '''
             html += '</td>'
@@ -1653,83 +1853,206 @@ def generate_preview_html(med_list):
 
 
 def generate_pdf(med_list):
-    """Generate a landscape PDF with medication schedule grid."""
+    """Generate a landscape PDF with monthly calendar view."""
+    import calendar
+
     pdf = FPDF(orientation='L', unit='mm', format='A4')
+    pdf.set_auto_page_break(auto=False)
+
+    today = datetime.now()
+    current_month = today.month
+    current_year = today.year
+
+    # Generate calendar for current month and next month
+    for month_offset in range(2):
+        month = current_month + month_offset
+        year = current_year
+        if month > 12:
+            month = month - 12
+            year += 1
+
+        pdf.add_page()
+
+        # Page dimensions (A4 landscape: 297 x 210 mm)
+        page_width = 297
+        page_height = 210
+        margin = 10
+
+        # Title
+        pdf.set_font('Helvetica', 'B', 20)
+        pdf.set_text_color(25, 118, 210)
+        month_name = calendar.month_name[month]
+        pdf.cell(0, 12, f'{month_name} {year}', ln=True, align='C')
+
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_text_color(100, 100, 100)
+        pdf.cell(0, 5, 'Medication Schedule', ln=True, align='C')
+        pdf.ln(3)
+
+        # Calendar grid setup
+        col_width = (page_width - 2 * margin) / 7
+        header_height = 8
+        row_height = 28
+
+        # Day headers
+        days_of_week = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+        pdf.set_fill_color(25, 118, 210)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Helvetica', 'B', 10)
+
+        for day_name in days_of_week:
+            pdf.cell(col_width, header_height, day_name, border=1, align='C', fill=True)
+        pdf.ln()
+
+        # Get calendar data
+        cal = calendar.Calendar(firstweekday=6)  # Sunday first
+        month_days = cal.monthdayscalendar(year, month)
+
+        # Draw calendar grid
+        for week in month_days:
+            y_row_start = pdf.get_y()
+
+            for day_idx, day in enumerate(week):
+                x_cell = margin + (day_idx * col_width)
+
+                # Cell background
+                if day == 0:
+                    pdf.set_fill_color(245, 245, 245)  # Gray for empty
+                elif day == today.day and month == today.month and year == today.year:
+                    pdf.set_fill_color(255, 253, 231)  # Yellow for today
+                else:
+                    pdf.set_fill_color(255, 255, 255)  # White
+
+                pdf.rect(x_cell, y_row_start, col_width, row_height, 'DF')
+                pdf.set_draw_color(200, 200, 200)
+                pdf.rect(x_cell, y_row_start, col_width, row_height, 'D')
+
+                if day != 0:
+                    # Day number
+                    pdf.set_xy(x_cell + 1, y_row_start + 1)
+                    pdf.set_font('Helvetica', 'B', 9)
+                    pdf.set_text_color(50, 50, 50)
+                    pdf.cell(col_width - 2, 5, str(day), align='L')
+
+                    # Calculate day offset from today for variable dosing
+                    cell_date = datetime(year, month, day)
+                    day_offset = (cell_date - today.replace(hour=0, minute=0, second=0, microsecond=0)).days
+
+                    # Medications for this day
+                    y_offset = y_row_start + 7
+                    for med in med_list:
+                        if y_offset + 5 > y_row_start + row_height - 1:
+                            # Show overflow indicator
+                            pdf.set_xy(x_cell + 1, y_row_start + row_height - 4)
+                            pdf.set_font('Helvetica', '', 5)
+                            pdf.set_text_color(150, 150, 150)
+                            pdf.cell(col_width - 2, 3, '...more', align='R')
+                            break
+
+                        # Med pill/badge
+                        if med['source'] == 'manual':
+                            pdf.set_fill_color(255, 224, 178)  # Orange
+                        else:
+                            pdf.set_fill_color(200, 230, 201)  # Green
+
+                        pdf.rect(x_cell + 1, y_offset, col_width - 2, 5, 'F')
+
+                        # Med name (truncated) with variable dosing support
+                        pdf.set_xy(x_cell + 2, y_offset + 0.5)
+                        pdf.set_font('Helvetica', '', 5)
+                        pdf.set_text_color(30, 30, 30)
+
+                        # Get dose for this day (supports variable dosing)
+                        day_dose = get_dose_for_day(med, max(0, day_offset))
+                        med_label = f"{med['name'][:8]} {day_dose}{med['strength_unit']}"
+                        pdf.cell(col_width - 4, 4, med_label, align='L')
+
+                        y_offset += 6
+
+            pdf.set_y(y_row_start + row_height)
+
+        # Legend
+        pdf.ln(3)
+        pdf.set_font('Helvetica', '', 7)
+        pdf.set_text_color(100, 100, 100)
+
+        # Legend items
+        legend_y = pdf.get_y()
+        pdf.set_fill_color(200, 230, 201)
+        pdf.rect(margin, legend_y, 4, 4, 'F')
+        pdf.set_xy(margin + 5, legend_y)
+        pdf.cell(30, 4, 'Database verified', align='L')
+
+        pdf.set_fill_color(255, 224, 178)
+        pdf.rect(margin + 40, legend_y, 4, 4, 'F')
+        pdf.set_xy(margin + 45, legend_y)
+        pdf.cell(30, 4, 'Manual entry', align='L')
+
+        pdf.set_fill_color(255, 253, 231)
+        pdf.rect(margin + 80, legend_y, 4, 4, 'F')
+        pdf.set_xy(margin + 85, legend_y)
+        pdf.cell(20, 4, 'Today', align='L')
+
+        # Medication list summary on right side of legend
+        pdf.set_xy(margin + 120, legend_y)
+        pdf.set_font('Helvetica', 'B', 7)
+        pdf.cell(0, 4, 'Medications: ', align='L')
+        pdf.set_font('Helvetica', '', 7)
+        med_summary = ', '.join([f"{m['name']} ({m['strength_value']}{m['strength_unit']})" for m in med_list[:4]])
+        if len(med_list) > 4:
+            med_summary += f' +{len(med_list) - 4} more'
+        pdf.set_xy(margin + 145, legend_y)
+        pdf.cell(0, 4, med_summary, align='L')
+
+    # Final page - detailed schedule
     pdf.add_page()
-    pdf.set_auto_page_break(auto=True, margin=15)
-
-    pdf.set_font('Helvetica', 'B', 18)
+    pdf.set_font('Helvetica', 'B', 16)
     pdf.set_text_color(25, 118, 210)
-    pdf.cell(0, 12, 'RxFlow Canada - Medication Schedule', ln=True, align='C')
+    pdf.cell(0, 10, 'Daily Medication Schedule', ln=True, align='C')
+    pdf.ln(5)
 
-    pdf.set_font('Helvetica', '', 10)
-    pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 6, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}', ln=True, align='C')
-    pdf.ln(8)
+    # Time-based schedule table
+    time_slots = ['Morning (6-9 AM)', 'Noon (11AM-1PM)', 'Evening (5-7 PM)', 'Bedtime (9-11 PM)']
+    slot_keys = ['Morning', 'Noon', 'Evening', 'Bedtime']
 
     pdf.set_fill_color(25, 118, 210)
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 10)
-
-    col_widths = [90, 35, 35, 35, 35]
-    headers = ['Medication Details', 'Morning', 'Noon', 'Evening', 'Bedtime']
-
-    for i, header in enumerate(headers):
-        pdf.cell(col_widths[i], 10, header, border=1, align='C', fill=True)
+    pdf.cell(70, 10, 'Time', border=1, align='C', fill=True)
+    pdf.cell(0, 10, 'Medications', border=1, align='C', fill=True)
     pdf.ln()
 
     pdf.set_text_color(0, 0, 0)
-    time_slots = ['Morning', 'Noon', 'Evening', 'Bedtime']
+    for i, slot_label in enumerate(time_slots):
+        slot_key = slot_keys[i]
+        meds_in_slot = [m for m in med_list if slot_key in m['time_slots']]
 
-    for med in med_list:
-        med_text = f"{med['name']}\n{med['strength_value']} {med['strength_unit']}"
-        if med['source'] == 'manual':
-            med_text += "\n(Manual Entry)"
-
-        row_height = 14
-
-        if med['source'] == 'manual':
-            pdf.set_fill_color(255, 243, 224)
-        else:
-            pdf.set_fill_color(232, 245, 233)
-
+        pdf.set_fill_color(245, 245, 245)
         pdf.set_font('Helvetica', 'B', 9)
-        x_start = pdf.get_x()
-        y_start = pdf.get_y()
+        pdf.cell(70, 12, slot_label, border=1, align='C', fill=True)
 
-        pdf.multi_cell(col_widths[0], row_height/2, med_text, border=1, align='L', fill=True)
-        pdf.set_xy(x_start + col_widths[0], y_start)
+        pdf.set_fill_color(255, 255, 255)
+        pdf.set_font('Helvetica', '', 9)
+        if meds_in_slot:
+            med_text = ', '.join([f"{m['name']} {m['strength_value']} {m['strength_unit']}" for m in meds_in_slot])
+        else:
+            med_text = '-'
+        pdf.cell(0, 12, med_text, border=1, align='L', fill=True)
+        pdf.ln()
 
-        for i, slot in enumerate(time_slots):
-            if slot in med['time_slots']:
-                mark = f"X\n({med['strength_value']} {med['strength_unit']})"
-                pdf.set_font('Helvetica', 'B', 9)
-            else:
-                mark = "-"
-                pdf.set_font('Helvetica', '', 9)
-
-            pdf.multi_cell(col_widths[i+1], row_height/2, mark, border=1, align='C', fill=True)
-            if i < 3:
-                pdf.set_xy(x_start + col_widths[0] + sum(col_widths[1:i+2]), y_start)
-
-        pdf.ln(0)
-
+    # Footer/disclaimer
     pdf.ln(10)
-    pdf.set_font('Helvetica', 'I', 9)
+    pdf.set_font('Helvetica', 'I', 8)
     pdf.set_text_color(100, 100, 100)
-    footer_text = (
-        f"Generated by RxFlow Canada. User verified on {datetime.now().strftime('%Y-%m-%d')}.\n"
-        "IMPORTANT: This schedule is for personal reference only. Always consult a pharmacist or healthcare provider."
-    )
-    pdf.multi_cell(0, 5, footer_text, align='C')
+    pdf.cell(0, 5, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}', ln=True, align='C')
 
-    pdf.ln(5)
+    pdf.ln(3)
     pdf.set_fill_color(255, 235, 238)
     pdf.set_text_color(198, 40, 40)
-    pdf.set_font('Helvetica', 'B', 8)
-    pdf.multi_cell(0, 5,
-        "DISCLAIMER: This tool does not provide medical advice. "
-        "Verify all medications and dosages with a licensed healthcare professional.",
+    pdf.set_font('Helvetica', 'B', 7)
+    pdf.multi_cell(0, 4,
+        "IMPORTANT: This schedule is for personal reference only and is NOT medical advice. "
+        "Always review this document for accuracy and verify with a pharmacist or healthcare provider.",
         align='C', fill=True)
 
     return pdf.output(dest='S').encode('latin-1')
@@ -1741,8 +2064,16 @@ def generate_pdf(med_list):
 
 st.markdown("""
 <div class="app-header">
-    <p class="app-title">RxFlow Canada</p>
-    <p class="app-subtitle">Safety-Critical Medication Schedule Builder</p>
+    <div class="app-logo">
+        <div class="app-icon">💊</div>
+        <div>
+            <p class="app-title">Medication Schedule Builder</p>
+        </div>
+    </div>
+</div>
+<div class="disclaimer-box">
+    <strong>⚠️ Important:</strong> This tool is for personal reference only and is NOT a substitute for professional medical advice.
+    Always verify your schedule with a pharmacist or healthcare provider before use.
 </div>
 """, unsafe_allow_html=True)
 
@@ -1750,13 +2081,16 @@ med_count = len(st.session_state.med_list)
 verified_count = sum(1 for idx in range(med_count) if st.session_state.verification_states.get(idx, False))
 
 if med_count == 0:
-    status_text = "No medications added yet"
+    status_text = "📋 No medications added yet — use the form below to get started"
+    status_class = "status-bar"
 elif verified_count == med_count:
-    status_text = f"[OK] {med_count} medication(s) - All verified - Ready to download"
+    status_text = f"✓ {med_count} medication(s) verified — Ready to download your schedule"
+    status_class = "status-bar ready"
 else:
-    status_text = f"[!] {med_count} medication(s) - {verified_count}/{med_count} verified"
+    status_text = f"⚠ {med_count} medication(s) added — {med_count - verified_count} still need verification"
+    status_class = "status-bar"
 
-st.markdown(f'<div class="status-bar">{status_text}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="{status_class}">{status_text}</div>', unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -1907,6 +2241,155 @@ with st.expander("Add Medication", expanded=True):
 
     st.divider()
 
+    # VARIABLE DOSING (Taper/Increase)
+    st.markdown("##### Variable Dosing")
+    variable_dosing = st.toggle(
+        "Taper or increase dose over time",
+        value=False,
+        help="Enable to create a schedule where the dose changes over time"
+    )
+
+    dose_schedule = None
+    if variable_dosing:
+        dosing_mode = st.radio(
+            "How would you like to set the schedule?",
+            options=["Gradual change", "Custom dates"],
+            horizontal=True,
+            help="Gradual: automatic changes every X days. Custom: set specific doses for date ranges."
+        )
+
+        if dosing_mode == "Gradual change":
+            direction = st.radio(
+                "Direction",
+                options=["Taper (decrease)", "Increase"],
+                horizontal=True
+            )
+
+            grad_col1, grad_col2 = st.columns(2)
+            with grad_col1:
+                start_dose = st.number_input(
+                    "Starting dose",
+                    min_value=0.0,
+                    max_value=10000.0,
+                    value=strength_value if strength_value > 0 else 0.0,
+                    step=0.5,
+                    format="%.1f",
+                    key="start_dose"
+                )
+            with grad_col2:
+                end_dose = st.number_input(
+                    "Ending dose",
+                    min_value=0.0,
+                    max_value=10000.0,
+                    value=0.0,
+                    step=0.5,
+                    format="%.1f",
+                    key="end_dose"
+                )
+
+            grad_col3, grad_col4 = st.columns(2)
+            with grad_col3:
+                change_amount = st.number_input(
+                    f"{'Decrease' if 'Taper' in direction else 'Increase'} by",
+                    min_value=0.1,
+                    max_value=1000.0,
+                    value=5.0,
+                    step=0.5,
+                    format="%.1f",
+                    key="change_amount"
+                )
+            with grad_col4:
+                change_days = st.number_input(
+                    "Every X days",
+                    min_value=1,
+                    max_value=30,
+                    value=7,
+                    step=1,
+                    key="change_days"
+                )
+
+            # Calculate and preview the schedule
+            is_taper = "Taper" in direction
+            doses = []
+            current = start_dose
+            day = 0
+
+            if is_taper:
+                while current > end_dose:
+                    doses.append({"day": day, "dose": current})
+                    current = max(end_dose, current - change_amount)
+                    day += change_days
+                if current == end_dose:
+                    doses.append({"day": day, "dose": end_dose})
+            else:
+                while current < end_dose:
+                    doses.append({"day": day, "dose": current})
+                    current = min(end_dose, current + change_amount)
+                    day += change_days
+                if current == end_dose:
+                    doses.append({"day": day, "dose": end_dose})
+
+            if doses:
+                st.caption("**Preview:**")
+                preview_text = " → ".join([f"Day {d['day']+1}: {d['dose']}{strength_unit}" for d in doses[:5]])
+                if len(doses) > 5:
+                    preview_text += f" → ... ({len(doses)} steps total)"
+                st.info(preview_text)
+
+            dose_schedule = {
+                "type": "gradual",
+                "direction": "taper" if is_taper else "increase",
+                "start_dose": start_dose,
+                "end_dose": end_dose,
+                "change_amount": change_amount,
+                "change_days": change_days,
+                "steps": doses
+            }
+
+        else:  # Custom dates
+            st.caption("Add dose changes for specific date ranges")
+
+            if 'custom_doses' not in st.session_state:
+                st.session_state.custom_doses = []
+
+            # Show existing custom doses
+            for i, cd in enumerate(st.session_state.custom_doses):
+                col1, col2, col3 = st.columns([2, 2, 1])
+                with col1:
+                    st.text(f"Day {cd['start_day']}-{cd['end_day']}")
+                with col2:
+                    st.text(f"{cd['dose']} {strength_unit}")
+                with col3:
+                    if st.button("✕", key=f"remove_custom_{i}"):
+                        st.session_state.custom_doses.pop(i)
+                        st.rerun()
+
+            # Add new custom dose
+            with st.container():
+                cc1, cc2, cc3 = st.columns([1, 1, 1])
+                with cc1:
+                    custom_start = st.number_input("From day", min_value=1, value=1, key="custom_start")
+                with cc2:
+                    custom_end = st.number_input("To day", min_value=1, value=7, key="custom_end")
+                with cc3:
+                    custom_dose = st.number_input("Dose", min_value=0.0, value=strength_value, step=0.5, format="%.1f", key="custom_dose_val")
+
+                if st.button("➕ Add date range", use_container_width=True):
+                    st.session_state.custom_doses.append({
+                        "start_day": custom_start,
+                        "end_day": custom_end,
+                        "dose": custom_dose
+                    })
+                    st.rerun()
+
+            if st.session_state.custom_doses:
+                dose_schedule = {
+                    "type": "custom",
+                    "ranges": st.session_state.custom_doses.copy()
+                }
+
+    st.divider()
+
     # TIME SLOTS
     st.markdown("##### Schedule (Select all that apply)")
     st.caption("Check each time of day this medication should be taken")
@@ -1956,10 +2439,15 @@ with st.expander("Add Medication", expanded=True):
             'strength_unit': strength_unit,
             'time_slots': selected_times,
             'source': source_type,
-            'added_at': datetime.now().isoformat()
+            'added_at': datetime.now().isoformat(),
+            'variable_dosing': variable_dosing,
+            'dose_schedule': dose_schedule
         }
 
         st.session_state.med_list.append(new_med)
+        # Clear custom doses for next entry
+        if 'custom_doses' in st.session_state:
+            st.session_state.custom_doses = []
         reset_all_verifications()
         st.toast(f"'{medication_name}' added to schedule!")
         st.rerun()
@@ -1970,9 +2458,7 @@ with st.expander("Add Medication", expanded=True):
 # =============================================================================
 
 if st.session_state.med_list:
-    st.markdown("---")
-    st.markdown("### Weekly Calendar View")
-    st.caption("Your medication schedule for the next 7 days")
+    st.markdown('<p class="section-header">📅 Weekly Preview</p>', unsafe_allow_html=True)
     calendar_html = generate_calendar_html(st.session_state.med_list)
     st.markdown(calendar_html, unsafe_allow_html=True)
 
@@ -1981,29 +2467,49 @@ if st.session_state.med_list:
 # REVIEW LIST SECTION
 # =============================================================================
 
-st.markdown("---")
-st.markdown("### Current Medication List")
+st.markdown('<p class="section-header">📋 Your Medications</p>', unsafe_allow_html=True)
 
 if not st.session_state.med_list:
-    st.info("No medications added yet. Use the form above to add medications to your schedule.")
+    st.markdown("""
+    <div class="info-card" style="text-align: center; padding: 2rem;">
+        <p style="font-size: 2rem; margin-bottom: 0.5rem;">💊</p>
+        <p style="color: #6b7280; margin: 0;">No medications added yet.<br>Use the form above to get started.</p>
+    </div>
+    """, unsafe_allow_html=True)
 else:
-    st.caption("**IMPORTANT:** Verify each medication entry before downloading the PDF.")
+    st.markdown("""
+    <p style="color: #6b7280; font-size: 0.9rem; margin-bottom: 1rem;">
+        ✓ Verify each medication before downloading your schedule
+    </p>
+    """, unsafe_allow_html=True)
 
     for idx, med in enumerate(st.session_state.med_list):
-        card_class = "manual-card" if med['source'] == 'manual' else "verified-card"
-        badge_class = "manual-badge" if med['source'] == 'manual' else "verified-badge"
-        badge_text = "MANUAL ENTRY" if med['source'] == 'manual' else "DATABASE"
+        card_class = "med-card manual" if med['source'] == 'manual' else "med-card verified"
+        badge_class = "med-badge manual" if med['source'] == 'manual' else "med-badge verified"
+        badge_icon = "✎" if med['source'] == 'manual' else "✓"
+        badge_text = "Manual" if med['source'] == 'manual' else "Verified"
 
         time_slots_html = "".join([f'<span class="time-slot">{slot}</span>' for slot in med['time_slots']])
+
+        # Build dose display
+        if med.get('variable_dosing') and med.get('dose_schedule'):
+            schedule = med['dose_schedule']
+            if schedule['type'] == 'gradual':
+                direction = "↓" if schedule['direction'] == 'taper' else "↑"
+                dose_html = f"{schedule['start_dose']} → {schedule['end_dose']} {med['strength_unit']} {direction}"
+            else:
+                dose_html = f"Variable dosing ({len(schedule.get('ranges', []))} ranges)"
+        else:
+            dose_html = f"{med['strength_value']} {med['strength_unit']}"
 
         st.markdown(f"""
         <div class="{card_class}">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div class="med-name">{med['name']}</div>
-                <span class="{badge_class}">{badge_text}</span>
+                <span class="{badge_class}">{badge_icon} {badge_text}</span>
             </div>
             <div class="med-details">
-                <strong>Dosage:</strong> {med['strength_value']} {med['strength_unit']}
+                {dose_html}
             </div>
             <div class="time-slots">{time_slots_html}</div>
         </div>
@@ -2012,73 +2518,65 @@ else:
         verify_col, remove_col = st.columns([3, 1])
 
         with verify_col:
-            st.markdown('<div class="verify-section">', unsafe_allow_html=True)
             verified = st.checkbox(
-                f"I verify '{med['name']}' entry is correct",
+                f"I confirm '{med['name']}' details are correct",
                 key=f"verify_{idx}",
                 value=st.session_state.verification_states.get(idx, False)
             )
             st.session_state.verification_states[idx] = verified
-            st.markdown('</div>', unsafe_allow_html=True)
 
         with remove_col:
-            if st.button("Remove", key=f"remove_{idx}", use_container_width=True):
+            if st.button("🗑️ Remove", key=f"remove_{idx}", use_container_width=True):
                 st.session_state.med_list.pop(idx)
                 reset_all_verifications()
                 st.toast("Medication removed")
                 st.rerun()
-
-        st.markdown("<br>", unsafe_allow_html=True)
 
 
 # =============================================================================
 # PDF PREVIEW & DOWNLOAD SECTION
 # =============================================================================
 
-st.markdown("---")
-st.markdown("### Generate Schedule PDF")
+st.markdown('<p class="section-header">📥 Download Calendar</p>', unsafe_allow_html=True)
 
 all_verified = check_all_verified()
 has_medications = len(st.session_state.med_list) > 0
 
 if not has_medications:
-    st.warning("**Cannot generate PDF:** Add at least one medication to the schedule.")
+    st.info("Add medications above to generate your printable calendar.")
 elif not all_verified:
     unverified_count = len(st.session_state.med_list) - verified_count
-    st.warning(f"**Cannot generate PDF:** {unverified_count} medication(s) still need verification. Check the boxes above.")
+    st.warning(f"Please verify {unverified_count} medication(s) above before downloading.")
 else:
-    st.success("All medications verified! Review the preview below, then download your PDF.")
-    st.markdown("#### Preview")
-    preview_html = generate_preview_html(st.session_state.med_list)
-    st.markdown(preview_html, unsafe_allow_html=True)
+    st.success("✓ All medications verified — ready to download!")
 
 if st.button(
-    "Download Schedule PDF",
+    "📅 Download Calendar PDF",
     type="primary",
     disabled=not (has_medications and all_verified),
     use_container_width=True
 ):
-    with st.spinner("Generating PDF..."):
+    with st.spinner("Generating..."):
         pdf_bytes = generate_pdf(st.session_state.med_list)
         st.download_button(
-            label="Click to Save PDF",
+            label="💾 Save PDF",
             data=pdf_bytes,
-            file_name=f"RxFlow_Schedule_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+            file_name=f"Medication_Calendar_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
-        st.toast("PDF generated successfully!")
+        st.toast("Calendar generated!")
 
 
 # =============================================================================
 # FOOTER
 # =============================================================================
 
-st.markdown("---")
 st.markdown("""
-<div style="text-align: center; color: #9e9e9e; font-size: 0.8rem; padding: 1rem 0;">
-    <strong>RxFlow Canada</strong> | For personal reference only<br>
-    Database includes 200+ common Canadian medications<br>
-    Always consult a pharmacist or healthcare provider
+<div class="app-footer">
+    <p style="margin: 0; line-height: 1.6;">
+        For personal reference only · Not medical advice<br>
+        Always review output for accuracy and consult a healthcare provider
+    </p>
 </div>
 """, unsafe_allow_html=True)
