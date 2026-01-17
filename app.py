@@ -11,6 +11,7 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
+import html as html_lib
 
 # =============================================================================
 # SHARED UI COMPONENTS
@@ -2386,10 +2387,15 @@ def generate_calendar_html(med_list):
                             dose_indicator = " ↓"
                         elif day_dose > prev_dose:
                             dose_indicator = " ↑"
+                    safe_name = html_lib.escape(str(med['name']))
+                    safe_dose = html_lib.escape(str(day_dose))
+                    safe_unit = html_lib.escape(str(med['strength_unit']))
+                    safe_indicator = html_lib.escape(str(dose_indicator))
+
                     html += f'''
                     <div class="{card_class}">
-                        <div class="med-title">{med['name']}</div>
-                        <div class="med-dose">{day_dose} {med['strength_unit']}{dose_indicator}</div>
+                        <div class="med-title">{safe_name}</div>
+                        <div class="med-dose">{safe_dose} {safe_unit}{safe_indicator}</div>
                     </div>
                     '''
             html += '</td>'
@@ -2423,11 +2429,15 @@ def generate_preview_html(med_list):
         bg_color = '#fff3e0' if med['source'] == 'manual' else '#e8f5e9'
         source_label = ' (Manual)' if med['source'] == 'manual' else ''
 
+        safe_name = html_lib.escape(str(med['name']))
+        safe_val = html_lib.escape(str(med['strength_value']))
+        safe_unit = html_lib.escape(str(med['strength_unit']))
+
         html += f'''
             <tr style="background-color: {bg_color};">
                 <td style="padding: 10px; border: 1px solid #e0e0e0;">
-                    <strong>{med['name']}</strong>{source_label}<br>
-                    <span style="color: #616161;">{med['strength_value']} {med['strength_unit']}</span>
+                    <strong>{safe_name}</strong>{source_label}<br>
+                    <span style="color: #616161;">{safe_val} {safe_unit}</span>
                 </td>
         '''
 
@@ -2436,7 +2446,7 @@ def generate_preview_html(med_list):
                 html += f'''
                     <td style="padding: 10px; border: 1px solid #e0e0e0; text-align: center; background-color: #c8e6c9;">
                         <strong>X</strong><br>
-                        <span style="font-size: 0.8rem;">{med['strength_value']} {med['strength_unit']}</span>
+                        <span style="font-size: 0.8rem;">{safe_val} {safe_unit}</span>
                     </td>
                 '''
             else:
@@ -3226,12 +3236,16 @@ else:
         # Build times string
         times_str = " · ".join(med.get('time_slots', []))
 
+        safe_name = html_lib.escape(str(med['name']))
+        safe_dose_str = html_lib.escape(str(dose_str))
+        safe_times_str = html_lib.escape(str(times_str))
+
         # Render medication item card
         st.markdown(f'''
         <div class="med-item">
             <div class="med-item-info">
-                <div class="med-item-name">{med['name']}</div>
-                <div class="med-item-details">{dose_str} · {times_str}</div>
+                <div class="med-item-name">{safe_name}</div>
+                <div class="med-item-details">{safe_dose_str} · {safe_times_str}</div>
             </div>
         </div>
         ''', unsafe_allow_html=True)
