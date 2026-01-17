@@ -2197,7 +2197,7 @@ def search_health_canada_api(query):
         }
 
         try:
-        response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
+            response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
         except requests.exceptions.ReadTimeout:
             response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
         if response.status_code != 200:
