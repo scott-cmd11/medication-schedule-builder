@@ -2676,6 +2676,8 @@ preview_btn_class = "app-bar-btn" if (has_meds and all_meds_verified) else "app-
 # Initialize preview modal state
 if 'show_preview_modal' not in st.session_state:
     st.session_state.show_preview_modal = False
+if 'final_ack_check' not in st.session_state:
+    st.session_state.final_ack_check = False
 
 # =============================================================================
 # CARD 1: ACTIONS PANEL (Title, Warning)
@@ -2695,7 +2697,7 @@ st.markdown('''
     <div class="header-card-body">
         <div class="warning-banner">
             <span class="warning-banner-icon">⚠️</span>
-            <span class="warning-banner-text">Verify against patient's prescription before printing.</span>
+            <span class="warning-banner-text">Experimental tool. Use at your own risk. Verify against the patient's prescription; developer not responsible for clinical decisions.</span>
         </div>
     </div>
 </div>
@@ -3108,24 +3110,37 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
     </div>
     ''', unsafe_allow_html=True)
 
+    # Final acknowledgement before print/download
+    final_ack_check = st.checkbox(
+        "I understand this is an experimental tool and I am responsible for verifying accuracy.",
+        key="final_ack_check"
+    )
+
     # Action buttons
     btn_col1, btn_col2, btn_col3 = st.columns(3, gap="small")
 
     with btn_col1:
+        view_pdf_enabled = final_ack_check
+        view_pdf_href = f"data:application/pdf;base64,{pdf_base64}" if view_pdf_enabled else "#"
+        view_pdf_style = (
+            "display: flex; align-items: center; justify-content: center; "
+            "width: 100%; height: 50px; background-color: var(--primary); color: white; "
+            "text-decoration: none; border-radius: var(--radius-md); font-weight: 600; "
+            "font-size: var(--text-base); border: 1px solid rgba(255,255,255,0.2); "
+            "box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s;"
+            if view_pdf_enabled else
+            "display: flex; align-items: center; justify-content: center; "
+            "width: 100%; height: 50px; background-color: #e2e8f0; color: #94a3b8; "
+            "text-decoration: none; border-radius: var(--radius-md); font-weight: 600; "
+            "font-size: var(--text-base); border: 1px solid #e2e8f0;"
+        )
         # "View PDF" button (Styled EXACTLY like a primary button)
         # Using a full-width div wrapper to simulate use_container_width=True behavior
         st.markdown(f'''
-            <a href="data:application/pdf;base64,{pdf_base64}"
+            <a href="{view_pdf_href}"
                target="_blank"
                title="Open PDF in new tab"
-               style="display: flex; align-items: center; justify-content: center;
-                      width: 100%; height: 50px;
-                      background-color: var(--primary); color: white;
-                      text-decoration: none; border-radius: var(--radius-md);
-                      font-weight: 600; font-size: var(--text-base);
-                      border: 1px solid rgba(255,255,255,0.2);
-                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-                      transition: all 0.2s;">
+               style="{view_pdf_style}">
                 📄 View PDF
             </a>
         ''', unsafe_allow_html=True)
@@ -3136,7 +3151,8 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
             data=pdf_bytes,
             file_name=f"Medication_Calendar_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
-            use_container_width=True
+            use_container_width=True,
+            disabled=not final_ack_check
         )
 
     with btn_col3:
@@ -3222,6 +3238,7 @@ all_verified = check_all_verified() if has_meds else False
 
 if has_meds and all_verified:
     if AppButton("📄 Preview Schedule", key="preview_schedule_btn", type="primary"):
+        st.session_state.final_ack_check = False
         st.session_state.show_preview_modal = True
         st.rerun()
 elif has_meds:

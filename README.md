@@ -1,6 +1,6 @@
 # Medication Schedule Builder (RxFlow Canada)
 
-Mobile-first Streamlit app for building patient medication schedules with guardrails, verification, and PDF export.
+Mobile-first Streamlit app for building patient medication schedules in Canada with guardrails, verification, and PDF export.
 
 ## Features
 - Add medications by search or manual entry
@@ -22,6 +22,7 @@ streamlit run app.py
 ```
 
 ## Notes
+- Intended for Canada only.
 - The app stores state in Streamlit session state during use.
 - PDF output is generated client-side from the current medication list.
 
