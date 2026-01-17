@@ -2811,6 +2811,23 @@ with st.container(border=True):
             else:
                 st.caption("No matches found.")
 
+                # UX Enhancement: Quick add shortcut for manual entry
+                # If no matches, let the user quickly add what they typed
+                btn_label = f"✏️ Add '{search_query}' manually"
+                # Truncate if too long to keep button tidy
+                if len(btn_label) > 35:
+                    btn_label = f"✏️ Add '{search_query[:20]}...' manually"
+
+                if AppButton(btn_label, key="quick_add_manual", type="secondary"):
+                    st.session_state.selected_medication = {
+                        'brand_name': search_query,
+                        'name': search_query,
+                        'category': 'Manual Entry',
+                        'source': 'manual'
+                    }
+                    st.session_state.manual_entry_mode = False
+                    st.rerun()
+
         # Equal-width buttons row (Buttons moved below results to allow expansion)
         if 'show_hc_search' not in st.session_state:
             st.session_state.show_hc_search = False
