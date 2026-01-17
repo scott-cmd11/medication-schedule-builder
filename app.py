@@ -2193,7 +2193,7 @@ def search_health_canada_api(query):
             'type': 'json'
         }
         headers = {
-            'User-Agent': 'RxFlow Canada/1.0'
+            'User-Agent': 'Medication Schedule Builder/1.0'
         }
 
         try:

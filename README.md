@@ -1,4 +1,4 @@
-# Medication Schedule Builder (RxFlow Canada)
+# Medication Schedule Builder
 
 Mobile-first Streamlit app for building patient medication schedules in Canada with guardrails, verification, and PDF export.
 
