@@ -17,7 +17,7 @@ from st_keyup import st_keyup
 # SHARED UI COMPONENTS
 # =============================================================================
 
-def AppButton(label, key=None, type="secondary", on_click=None, help=None, disabled=False, use_container_width=True):
+def AppButton(label, key=None, type="secondary", on_click=None, help=None, disabled=False, use_container_width=True, args=None, kwargs=None):
     """
     Shared button component with consistent styling.
     Defaults to full width (use_container_width=True).
@@ -28,6 +28,8 @@ def AppButton(label, key=None, type="secondary", on_click=None, help=None, disab
         key=key,
         type=type,
         on_click=on_click,
+        args=args,
+        kwargs=kwargs,
         help=help,
         disabled=disabled,
         use_container_width=use_container_width
@@ -82,6 +84,7 @@ def AppNumberInput(label, min_value=None, max_value=None, value=None, step=None,
     )
 
 
+
 # =============================================================================
 # PAGE CONFIG & CUSTOM CSS
 # =============================================================================
@@ -95,27 +98,33 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
 
     :root {
+        /* Branding */
+        --font-display: 'Space Grotesk', 'Segoe UI', sans-serif;
+        --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+
         /* Colors */
-        --primary: #0891b2;
-        --primary-dark: #0e7490;
-        --primary-light: #22d3ee;
-        --success: #059669;
-        --success-light: #d1fae5;
-        --warning: #d97706;
+        --primary: #ff5a1f;
+        --primary-dark: #c2410c;
+        --primary-light: #ffd7bf;
+        --accent: #0ea5a4;
+        --accent-dark: #0f766e;
+        --success: #0f766e;
+        --success-light: #ccfbf1;
+        --warning: #f59e0b;
         --warning-light: #fef3c7;
-        --danger: #dc2626;
-        --gray-50: #f9fafb;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-400: #9ca3af;
-        --gray-500: #6b7280;
-        --gray-600: #4b5563;
-        --gray-700: #374151;
-        --gray-900: #111827;
+        --danger: #ef4444;
+        --gray-50: #f8fafc;
+        --gray-100: #f1f5f9;
+        --gray-200: #e2e8f0;
+        --gray-300: #cbd5e1;
+        --gray-400: #94a3b8;
+        --gray-500: #64748b;
+        --gray-600: #475569;
+        --gray-700: #334155;
+        --gray-900: #0f172a;
 
         /* Spacing */
         --space-1: 4px;
@@ -152,7 +161,10 @@ st.markdown("""
 
     /* Page Wrapper (centered, max-w-640px) */
     .stApp {
-        background: #f1f5f9;
+        background:
+            radial-gradient(900px 520px at 6% -8%, rgba(255, 90, 31, 0.18), transparent 60%),
+            radial-gradient(900px 520px at 95% 0%, rgba(14, 165, 164, 0.16), transparent 58%),
+            linear-gradient(180deg, #fef7f1 0%, #f8fafc 40%, #eef2f7 100%);
         display: flex;
         justify-content: center;
     }
@@ -174,7 +186,12 @@ st.markdown("""
 
     /* Global typography */
     * {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-family: var(--font-body);
+    }
+
+    @keyframes riseIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* ===== APP BAR ===== */
@@ -208,6 +225,7 @@ st.markdown("""
         font-size: var(--text-xl);
         font-weight: 700;
         color: white;
+        font-family: var(--font-display);
         text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     .app-bar-btn {
@@ -266,12 +284,12 @@ st.markdown("""
         justify-content: center;
         gap: var(--space-2);
         padding: var(--space-2) var(--space-3);
-        background: white;
+        background: #fff4e6;
         border-radius: var(--radius-md);
         font-size: var(--text-sm);
-        color: #92400e;
+        color: #9a3412;
         margin-bottom: var(--space-3);
-        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
     }
     .warning-banner-icon {
         flex-shrink: 0;
@@ -338,9 +356,10 @@ st.markdown("""
         box-shadow: var(--shadow-card);
         overflow: hidden;
         margin-bottom: var(--space-4);
+        animation: riseIn 0.45s ease both;
     }
     .header-card-top {
-        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);
+        background: linear-gradient(135deg, #ff5a1f 0%, #ff7a45 40%, #0ea5a4 100%);
         padding: var(--space-3) var(--space-4);
     }
     .header-card-body {
@@ -362,6 +381,7 @@ st.markdown("""
         letter-spacing: 0.025em;
         text-transform: uppercase;
         color: var(--gray-500);
+        font-family: var(--font-display);
     }
 
     /* ===== EMPTY STATE ===== */
@@ -435,9 +455,15 @@ st.markdown("""
         color: var(--gray-500);
         margin-bottom: var(--space-2);
     }
+    .mini-label {
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--gray-600);
+        margin: 0 0 6px 2px;
+    }
 
     /* ===== INPUTS & SELECTS ===== */
-    .stTextInput > div > div, .stNumberInput > div > div, .stSelectbox > div > div {
+    .stTextInput > div > div, .stSelectbox > div > div {
         border-radius: var(--radius-lg) !important;
         height: var(--input-height) !important;
         min-height: var(--input-height) !important;
@@ -449,8 +475,15 @@ st.markdown("""
         display: flex;
         align-items: center;
         box-sizing: border-box;
+        overflow: visible;
     }
-    .stTextInput > div > div:focus-within, .stNumberInput > div > div:focus-within, .stSelectbox > div > div:focus-within {
+    .stNumberInput > div > div {
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    .stTextInput > div > div:focus-within, .stSelectbox > div > div:focus-within {
         border-color: var(--primary);
         box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.15);
     }
@@ -462,9 +495,90 @@ st.markdown("""
         padding: 0 !important;
         margin: 0;
         display: block;
-        transform: translateY(1px);
+        transform: none;
     }
-    
+    .stNumberInput input {
+        padding-left: var(--space-4) !important;
+        padding-right: var(--space-2) !important;
+    }
+    .stNumberInput input:focus,
+    .stTextInput input:focus {
+        outline: none;
+        box-shadow: none;
+    }
+    .stTextInput input {
+        height: var(--input-height) !important;
+        line-height: var(--input-height) !important;
+    }
+
+    .stTextInput div[data-baseweb="input"],
+    .stTextInput div[data-baseweb="base-input"] {
+        height: var(--input-height);
+        align-items: center;
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+    }
+    .stTextInput div[data-baseweb="input"] > div,
+    .stTextInput div[data-baseweb="base-input"] > div {
+        height: var(--input-height);
+        display: flex;
+        align-items: center;
+    }
+    .stNumberInput input {
+        height: var(--input-height) !important;
+        line-height: var(--input-height) !important;
+        padding: 0 var(--space-4) !important;
+        transform: none;
+    }
+
+    /* Number inputs (clean, no steppers) */
+    .stNumberInput div[data-baseweb="input"] {
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-card);
+        background: white;
+        height: var(--input-height);
+        align-items: center;
+        padding: 0 !important;
+        overflow: hidden;
+    }
+    .stNumberInput div[data-baseweb="input"]:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(255, 90, 31, 0.2);
+    }
+    .stNumberInput div[data-baseweb="input"] > div {
+        height: var(--input-height);
+        display: flex;
+        align-items: center;
+        padding: 0 !important;
+    }
+    .stNumberInput div[data-baseweb="input"] button {
+        display: none !important; /* Hide native steppers */
+    }
+    .stNumberInput input {
+        height: var(--input-height) !important;
+        line-height: var(--input-height) !important;
+        padding: 0 var(--space-4) !important;
+        background: transparent !important;
+        width: 100%;
+    }
+    .stSelectbox div[data-baseweb="select"] {
+        height: var(--input-height) !important;
+        min-height: var(--input-height) !important;
+        border-radius: var(--radius-lg) !important;
+        overflow: hidden;
+        padding: 0 !important;
+    }
+    .stSelectbox div[data-baseweb="select"] > div,
+    .stSelectbox div[data-baseweb="select"] [role="button"] {
+        height: var(--input-height) !important;
+        min-height: var(--input-height) !important;
+        display: flex;
+        align-items: center;
+        padding: 0 var(--space-4) !important;
+        box-sizing: border-box;
+    }
+
     /* Forced White Background for inner containers */
     div[data-baseweb="input"], div[data-baseweb="base-input"] {
         background-color: white !important;
@@ -476,7 +590,7 @@ st.markdown("""
 
     /* ===== BUTTONS ===== */
     .stButton > button {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-display);
         font-weight: 500;
         box-sizing: border-box;
         height: var(--button-height) !important;
@@ -487,7 +601,7 @@ st.markdown("""
         transition: all 0.15s ease;
         background: white;
         color: var(--gray-700);
-        box-shadow: var(--shadow-card);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -497,10 +611,26 @@ st.markdown("""
         white-space: nowrap !important;
         width: 100%;
     }
+    .stButton > button span,
+    .stButton > button p {
+        color: var(--gray-700) !important;
+    }
+    .stButton > button * {
+        color: inherit !important;
+        opacity: 1 !important;
+    }
+    .stButton > button[aria-label="+"],
+    .stButton > button[aria-label="-"] {
+        padding: 0 !important;
+        min-width: 40px;
+        width: 40px;
+        font-size: 18px !important;
+        font-weight: 700;
+    }
     .stButton > button:hover {
         transform: translateY(-1px);
-        background: var(--gray-50);
-        border-color: var(--gray-300);
+        background: #fff7ed;
+        border-color: #fdba74;
     }
     .stButton > button:active {
         transform: translateY(0);
@@ -509,6 +639,7 @@ st.markdown("""
     .stButton > button p {
         font-size: 16px;
         font-weight: 500;
+        margin: 0;
     }
 
     /* ===== SELECTED MEDICATION CHIP ===== */
@@ -517,9 +648,13 @@ st.markdown("""
         align-items: center;
         gap: var(--space-2);
         padding: var(--space-2) var(--space-3);
-        background: var(--success-light);
+        background: #f0fdfa;
         border-radius: var(--radius-md);
         margin-bottom: var(--space-4);
+        border: 1px solid #99f6e4;
+    }
+    .selected-chip.compact {
+        margin-bottom: 0;
     }
     .selected-chip-icon {
         color: var(--success);
@@ -561,9 +696,9 @@ st.markdown("""
         border-color: var(--primary);
     }
     .time-chip.selected {
-        background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-        border-color: var(--primary);
-        color: var(--primary-dark);
+        background: linear-gradient(135deg, #fff1e6 0%, #ffe4d6 100%);
+        border-color: #fdba74;
+        color: #9a3412;
     }
     .time-chip-check {
         display: none;
@@ -607,11 +742,13 @@ st.markdown("""
         display: flex;
         align-items: center;
         padding: var(--space-4);
-        background: white;
+        background: linear-gradient(180deg, #ffffff 0%, #fff7ed 120%);
         border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-card);
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
         margin-bottom: var(--space-3);
-        border: 1px solid var(--gray-200); /* Consistent border */
+        border: 1px solid #fed7aa;
+        border-left: 4px solid var(--primary);
+        animation: riseIn 0.4s ease both;
     }
     .med-item-info {
         flex: 1;
@@ -683,7 +820,7 @@ st.markdown("""
         border-bottom: none;
     }
     .search-result:hover {
-        background: #ecfeff;
+        background: #fff7ed;
         padding-left: var(--space-5); /* Slight movement effect */
     }
     .search-result-info {
@@ -711,7 +848,7 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
-        background: var(--primary-light);
+        background: linear-gradient(135deg, #ff5a1f 0%, #ff7a45 100%);
         color: white;
         border-radius: 50%;
         font-size: 18px;
@@ -722,7 +859,7 @@ st.markdown("""
     }
     .search-result:hover .search-result-add {
         transform: scale(1.1);
-        background: var(--primary);
+        background: linear-gradient(135deg, #ff7a45 0%, #ff5a1f 100%);
     }
 
 
@@ -762,12 +899,13 @@ st.markdown("""
         padding-bottom: calc(var(--space-4) + 80px);
         color: var(--gray-500);
         font-size: var(--text-xs);
+        font-family: var(--font-display);
     }
 
     /* ===== DIVIDER (Compact) ===== */
     .divider {
         height: 1px;
-        background: var(--gray-200);
+        background: linear-gradient(90deg, transparent 0%, #fed7aa 40%, #99f6e4 60%, transparent 100%);
         margin: var(--space-2) 0;
     }
 
@@ -778,7 +916,8 @@ st.markdown("""
         padding: var(--space-4);
         box-shadow: var(--shadow-elevated);
         margin-bottom: var(--space-4);
-        border: 2px solid var(--primary);
+        border: 2px solid #fdba74;
+        animation: riseIn 0.5s ease both;
     }
     .preview-card-header {
         display: flex;
@@ -790,6 +929,7 @@ st.markdown("""
         font-size: var(--text-lg);
         font-weight: 600;
         color: var(--gray-900);
+        font-family: var(--font-display);
     }
     .preview-iframe {
         width: 100%;
@@ -2103,6 +2243,59 @@ def search_health_canada_api(query):
         return []
 
 
+def run_health_canada_search():
+    """Fetch Health Canada results for the current search field."""
+    query = st.session_state.get("hc_search", "").strip()
+    if len(query) < 2:
+        return
+    with st.spinner("..."):
+        api_results = search_health_canada_api(query)
+    if api_results:
+        st.session_state.api_search_results = api_results
+    else:
+        st.session_state.api_search_results = []
+        st.warning("No results.")
+
+
+def generate_dose_schedule(start_dose, target_dose, step_amount, days_per_step):
+    """
+    Generates a list of dates and doses.
+    """
+    schedule = []
+    current_dose = start_dose
+    current_date = datetime.now().date()
+
+    if start_dose > target_dose:
+        direction = -1  # Taper
+    else:
+        direction = 1  # Increase
+
+    keep_calculating = True
+    while keep_calculating:
+        schedule.append({
+            "date": current_date,
+            "dose": current_dose,
+            "duration_days": days_per_step
+        })
+
+        next_dose = current_dose + (step_amount * direction)
+
+        if (direction == -1 and next_dose <= target_dose) or \
+           (direction == 1 and next_dose >= target_dose):
+            current_dose = target_dose
+            keep_calculating = False
+            schedule.append({
+                "date": current_date + timedelta(days=days_per_step),
+                "dose": current_dose,
+                "note": "Target Reached"
+            })
+        else:
+            current_dose = next_dose
+            current_date = current_date + timedelta(days=days_per_step)
+
+    return schedule
+
+
 def reset_all_verifications():
     """Reset all verification checkboxes when a new medication is added."""
     st.session_state.verification_states = {
@@ -2351,36 +2544,37 @@ def generate_pdf(med_list):
                     cell_date = datetime(year, month, day)
                     day_offset = (cell_date - today.replace(hour=0, minute=0, second=0, microsecond=0)).days
 
-                    # Medications for this day
-                    y_offset = y_row_start + 7
-                    for med in med_list:
-                        if y_offset + 5 > y_row_start + row_height - 1:
-                            # Show overflow indicator
-                            pdf.set_xy(x_cell + 1, y_row_start + row_height - 4)
+                    # Medications for this day (skip past dates in current month)
+                    if not (month == today.month and year == today.year and day_offset < 0):
+                        y_offset = y_row_start + 7
+                        for med in med_list:
+                            if y_offset + 5 > y_row_start + row_height - 1:
+                                # Show overflow indicator
+                                pdf.set_xy(x_cell + 1, y_row_start + row_height - 4)
+                                pdf.set_font('Helvetica', '', 5)
+                                pdf.set_text_color(150, 150, 150)
+                                pdf.cell(col_width - 2, 3, '...more', align='R')
+                                break
+
+                            # Med pill/badge
+                            if med['source'] == 'manual':
+                                pdf.set_fill_color(255, 224, 178)  # Orange
+                            else:
+                                pdf.set_fill_color(200, 230, 201)  # Green
+
+                            pdf.rect(x_cell + 1, y_offset, col_width - 2, 5, 'F')
+
+                            # Med name (truncated) with variable dosing support
+                            pdf.set_xy(x_cell + 2, y_offset + 0.5)
                             pdf.set_font('Helvetica', '', 5)
-                            pdf.set_text_color(150, 150, 150)
-                            pdf.cell(col_width - 2, 3, '...more', align='R')
-                            break
+                            pdf.set_text_color(30, 30, 30)
 
-                        # Med pill/badge
-                        if med['source'] == 'manual':
-                            pdf.set_fill_color(255, 224, 178)  # Orange
-                        else:
-                            pdf.set_fill_color(200, 230, 201)  # Green
+                            # Get dose for this day (supports variable dosing)
+                            day_dose = get_dose_for_day(med, day_offset)
+                            med_label = f"{med['name'][:8]} {day_dose}{med['strength_unit']}"
+                            pdf.cell(col_width - 4, 4, med_label, align='L')
 
-                        pdf.rect(x_cell + 1, y_offset, col_width - 2, 5, 'F')
-
-                        # Med name (truncated) with variable dosing support
-                        pdf.set_xy(x_cell + 2, y_offset + 0.5)
-                        pdf.set_font('Helvetica', '', 5)
-                        pdf.set_text_color(30, 30, 30)
-
-                        # Get dose for this day (supports variable dosing)
-                        day_dose = get_dose_for_day(med, max(0, day_offset))
-                        med_label = f"{med['name'][:8]} {day_dose}{med['strength_unit']}"
-                        pdf.cell(col_width - 4, 4, med_label, align='L')
-
-                        y_offset += 6
+                            y_offset += 6
 
             pdf.set_y(y_row_start + row_height)
 
@@ -2534,18 +2728,17 @@ with st.container(border=True):
 
     # === MEDICATION SELECTION ===
     if st.session_state.selected_medication:
-        # Show selected medication chip
+        # Show selected medication chip + change button in one row
         med = st.session_state.selected_medication
         med_name = med.get('brand_name', med.get('name', 'Unknown'))
-        st.markdown(f'''
-            <div class="selected-chip">
-                <span class="selected-chip-icon">✓</span>
-                <span class="selected-chip-name">{med_name}</span>
-            </div>
-        ''', unsafe_allow_html=True)
-
-        change_col1, change_col2 = st.columns([3, 1])
-        with change_col2:
+        chip_col, btn_col = st.columns([4, 1])
+        with chip_col:
+            st.markdown(f'''
+                <div class="selected-chip compact">
+                    <span class="selected-chip-name">{med_name}</span>
+                </div>
+            ''', unsafe_allow_html=True)
+        with btn_col:
             if AppButton("Change", type="secondary", key="change_med"):
                 st.session_state.selected_medication = None
                 st.session_state.dose_value = 0.0
@@ -2634,17 +2827,16 @@ with st.container(border=True):
             st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
             hc_col1, hc_col2 = st.columns([6, 1], gap="small")
             with hc_col1:
-                hc_query = AppInput("", placeholder="Search 47K+ products...", key="hc_search", label_visibility="collapsed")
+                hc_query = AppInput(
+                    "",
+                    placeholder="Search 47K+ products...",
+                    key="hc_search",
+                    label_visibility="collapsed",
+                    on_change=run_health_canada_search
+                )
             with hc_col2:
                 if AppButton("Go", key="hc_search_btn"):
-                    if hc_query:
-                        with st.spinner("..."):
-                            api_results = search_health_canada_api(hc_query)
-                            if api_results:
-                                st.session_state.api_search_results = api_results
-                                st.rerun()
-                            else:
-                                st.warning("No results.")
+                    run_health_canada_search()
 
 # =============================================================================
 # DOSE SECTION (shown after medication selected)
@@ -2708,41 +2900,52 @@ if st.session_state.selected_medication:
 
                 g_col1, g_col2 = st.columns(2, gap="small")
                 with g_col1:
-                    start_dose = AppNumberInput("Start", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="grad_start")
+                    st.markdown('<p class="mini-label">Start dose</p>', unsafe_allow_html=True)
+                    start_dose = AppNumberInput("Start", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="grad_start", label_visibility="collapsed")
                 with g_col2:
-                    end_dose = AppNumberInput("End", min_value=0.0, value=0.0, step=0.5, format="%.1f", key="grad_end")
+                    st.markdown('<p class="mini-label">Target dose</p>', unsafe_allow_html=True)
+                    end_dose = AppNumberInput("End", min_value=0.0, value=0.0, step=0.5, format="%.1f", key="grad_end", label_visibility="collapsed")
 
                 g_col3, g_col4 = st.columns(2, gap="small")
                 with g_col3:
-                    change_amt = AppNumberInput("Change by", min_value=0.1, value=5.0, step=0.5, format="%.1f", key="grad_change")
+                    st.markdown('<p class="mini-label">Change by</p>', unsafe_allow_html=True)
+                    change_amt = AppNumberInput("Change by", min_value=0.1, value=5.0, step=0.5, format="%.1f", key="grad_change", label_visibility="collapsed")
                 with g_col4:
-                    change_days = AppNumberInput("Every X days", min_value=1, value=7, step=1, key="grad_days")
+                    st.markdown('<p class="mini-label">Every X days</p>', unsafe_allow_html=True)
+                    change_days = AppNumberInput("Every X days", min_value=1, value=7, step=1, key="grad_days", label_visibility="collapsed")
 
-                # Calculate schedule
+                # Validate inputs before building schedule
+                input_errors = []
+                if change_amt <= 0:
+                    input_errors.append("Change by must be > 0")
+                if int(change_days) < 1:
+                    input_errors.append("Every X days must be >= 1")
+
                 is_taper = "Taper" in direction
-                doses = []
-                current = start_dose
-                day = 0
-                if is_taper:
-                    while current > end_dose and len(doses) < 50:
-                        doses.append({"day": day, "dose": current})
-                        current = max(end_dose, current - change_amt)
-                        day += change_days
-                    if current == end_dose:
-                        doses.append({"day": day, "dose": end_dose})
-                else:
-                    while current < end_dose and len(doses) < 50:
-                        doses.append({"day": day, "dose": current})
-                        current = min(end_dose, current + change_amt)
-                        day += change_days
-                    if current == end_dose:
-                        doses.append({"day": day, "dose": end_dose})
+                if is_taper and start_dose <= end_dose:
+                    input_errors.append("Start dose must be greater than target dose for taper")
+                if (not is_taper) and start_dose >= end_dose:
+                    input_errors.append("Target dose must be greater than start dose for increase")
 
-                if doses:
-                    preview = " → ".join([f"Day {d['day']+1}: {d['dose']}" for d in doses[:4]])
-                    if len(doses) > 4:
-                        preview += f" ... ({len(doses)} steps)"
-                    st.caption(preview)
+                if input_errors:
+                    st.warning("Fix: " + "; ".join(input_errors))
+                    doses = []
+                else:
+                    # Calculate schedule using date-based steps
+                    schedule = generate_dose_schedule(start_dose, end_dose, change_amt, int(change_days))
+
+                    # Convert date-based schedule to day offsets for existing logic
+                    today_date = datetime.now().date()
+                    doses = []
+                    for item in schedule:
+                        day_offset = (item["date"] - today_date).days
+                        doses.append({"day": day_offset, "dose": item["dose"]})
+
+                    if doses:
+                        preview = " -> ".join([f"Day {d['day']+1}: {d['dose']}" for d in doses[:4]])
+                        if len(doses) > 4:
+                            preview += f" ... ({len(doses)} steps)"
+                        st.caption(preview)
 
                 dose_schedule = {
                     "type": "gradual",
@@ -2750,7 +2953,7 @@ if st.session_state.selected_medication:
                     "start_dose": start_dose,
                     "end_dose": end_dose,
                     "change_amount": change_amt,
-                    "change_days": change_days,
+                    "change_days": int(change_days),
                     "steps": doses
                 }
 
