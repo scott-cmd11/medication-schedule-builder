@@ -2448,7 +2448,7 @@ def generate_preview_html(med_list):
         </table>
         <div style="margin-top: 15px; padding: 10px; background-color: #fff8e1; border-radius: 4px; font-size: 0.85rem;">
             <strong>Generated:</strong> {datetime.now().strftime("%Y-%m-%d %H:%M")}<br>
-            <em>Please verify all medication details with the patient's prescription.</em>
+            <em>Experimental tool. Verify medication name, dose, route, and schedule against the patient's prescription. Developer not responsible for errors, omissions, or outcomes.</em>
         </div>
     </div>
     '''
@@ -2655,7 +2655,7 @@ def generate_pdf(med_list):
     pdf.set_text_color(198, 40, 40)
     pdf.set_font('Helvetica', 'B', 7)
     pdf.multi_cell(0, 4,
-        "Please verify all medication details match the patient's prescription before use.",
+        "Experimental tool. Verify medication name, dose, route, and schedule against the patient's prescription. Developer not responsible for errors, omissions, or outcomes.",
         align='C', fill=True)
 
     return pdf.output(dest='S').encode('latin-1')
@@ -2694,7 +2694,7 @@ st.markdown('''
     <div class="header-card-body">
         <div class="warning-banner">
             <span class="warning-banner-icon">⚠️</span>
-            <span class="warning-banner-text">Experimental tool. Use at your own risk. Verify against the patient's prescription; developer not responsible for clinical decisions.</span>
+            <span class="warning-banner-text">Experimental tool — use at your own risk. Always verify medication name, dose, route, and schedule against the patient's prescription. Developer is not responsible for errors, omissions, or outcomes.</span>
         </div>
     </div>
 </div>
@@ -3139,7 +3139,7 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
 
     # Final acknowledgement before print/download
     final_ack_check = st.checkbox(
-        "I understand this is an experimental tool and I am responsible for verifying accuracy.",
+        "I understand this is an experimental tool and I am responsible for verifying medication name, dose, route, and schedule.",
         key="final_ack_check"
     )
 
@@ -3284,7 +3284,8 @@ st.markdown("""
 <div class="app-footer">
     <p style="margin: 0; line-height: 1.6;">
         For pharmacy use<br>
-        Always verify against patient prescription
+        Experimental tool — verify medication name, dose, route, and schedule<br>
+        Developer not responsible for errors, omissions, or outcomes
     </p>
 </div>
 """, unsafe_allow_html=True)
