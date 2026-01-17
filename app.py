@@ -11,7 +11,6 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
-from st_keyup import st_keyup
 
 # =============================================================================
 # SHARED UI COMPONENTS
@@ -509,6 +508,22 @@ st.markdown("""
     .stTextInput input {
         height: var(--input-height) !important;
         line-height: var(--input-height) !important;
+    }
+    /* Compact height for the medication search input */
+    div[data-testid="stTextInput"][data-key="med_search_input"] > div > div {
+        height: 36px !important;
+        min-height: 36px !important;
+    }
+    div[data-testid="stTextInput"][data-key="med_search_input"] div[data-baseweb="input"],
+    div[data-testid="stTextInput"][data-key="med_search_input"] div[data-baseweb="base-input"] {
+        height: 36px !important;
+        min-height: 36px !important;
+    }
+    div[data-testid="stTextInput"][data-key="med_search_input"] input {
+        height: 36px !important;
+        line-height: 36px !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
     }
 
     .stTextInput div[data-baseweb="input"],
@@ -2167,11 +2182,9 @@ def search_medications(query):
 def search_health_canada_api(query):
     """Search Health Canada's full drug database API."""
     if not query or len(query) < 2:
-        return []
+        return [], None
 
     try:
-        import json
-
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
         url = "https://health-products.canada.ca/api/drug/drugproduct/"
         params = {
@@ -2179,82 +2192,66 @@ def search_health_canada_api(query):
             'lang': 'en',
             'type': 'json'
         }
+        headers = {
+            'User-Agent': 'RxFlow Canada/1.0'
+        }
 
-        # Use streaming to limit data downloaded
-        response = requests.get(url, params=params, timeout=8, stream=True)
+        try:
+        response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
+        except requests.exceptions.ReadTimeout:
+            response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
+        if response.status_code != 200:
+            return [], f"Health Canada API error ({response.status_code})."
 
-        if response.status_code == 200:
-            # Read only first 200KB to avoid memory issues
-            content = ""
-            bytes_read = 0
-            max_bytes = 200000
+        data = response.json()
 
-            for chunk in response.iter_content(chunk_size=8192, decode_unicode=True):
-                if chunk:
-                    content += chunk
-                    bytes_read += len(chunk)
-                    if bytes_read >= max_bytes:
-                        break
+        results = []
+        seen_names = set()
 
-            response.close()
+        for item in data[:100]:
+            brand_name = item.get('brand_name', '').strip()
+            company = item.get('company_name', '').strip()
 
-            # Try to fix truncated JSON
-            try:
-                # Find last complete object
-                last_complete = content.rfind('},')
-                if last_complete > 0:
-                    content = content[:last_complete + 1] + ']'
-                data = json.loads(content)
-            except json.JSONDecodeError:
-                # If JSON is broken, try to find valid portion
-                try:
-                    first_bracket = content.find('[')
-                    last_bracket = content.rfind('}')
-                    if first_bracket >= 0 and last_bracket > first_bracket:
-                        content = content[first_bracket:last_bracket + 1] + ']'
-                        data = json.loads(content)
-                    else:
-                        return []
-                except:
-                    return []
+            if brand_name and brand_name.upper() not in seen_names:
+                seen_names.add(brand_name.upper())
+                results.append({
+                    'brand_name': brand_name,
+                    'company': company if company else 'Health Canada DPD',
+                    'category': 'Health Canada',
+                    'source': 'Health Canada API'
+                })
 
-            results = []
-            seen_names = set()
-
-            for item in data[:100]:
-                brand_name = item.get('brand_name', '').strip()
-                company = item.get('company_name', '').strip()
-
-                if brand_name and brand_name.upper() not in seen_names:
-                    seen_names.add(brand_name.upper())
-                    results.append({
-                        'brand_name': brand_name,
-                        'company': company if company else 'Health Canada DPD',
-                        'category': 'Health Canada',
-                        'source': 'Health Canada API'
-                    })
-
-            return results[:30]
-        return []
+        return results[:30], None
 
     except requests.exceptions.Timeout:
-        return []
+        return [], "Health Canada API timed out. Please try again or check your network."
     except Exception as e:
-        return []
+        return [], "Health Canada API request failed."
 
 
 def run_health_canada_search():
     """Fetch Health Canada results for the current search field."""
     query = st.session_state.get("hc_search", "").strip()
     if len(query) < 2:
+        st.session_state.api_search_results = []
+        st.session_state.hc_search_ran = False
+        st.session_state.hc_search_last = ""
+        st.session_state.hc_search_error = ""
         return
-    with st.spinner("..."):
-        api_results = search_health_canada_api(query)
+    st.session_state.hc_search_ran = True
+    st.session_state.hc_search_last = query
+    st.session_state.hc_search_error = ""
+    with st.spinner("Searching Health Canada..."):
+        api_results, api_error = search_health_canada_api(query)
     if api_results:
         st.session_state.api_search_results = api_results
     else:
         st.session_state.api_search_results = []
-        st.warning("No results.")
+        if api_error:
+            st.session_state.hc_search_error = api_error
+            st.warning(api_error)
+        else:
+            st.warning("No results.")
 
 
 def generate_dose_schedule(start_dose, target_dose, step_amount, days_per_step):
@@ -2723,6 +2720,12 @@ if 'selected_times' not in st.session_state:
     st.session_state.selected_times = []
 if 'custom_doses' not in st.session_state:
     st.session_state.custom_doses = []
+if 'hc_search_ran' not in st.session_state:
+    st.session_state.hc_search_ran = False
+if 'hc_search_last' not in st.session_state:
+    st.session_state.hc_search_last = ""
+if 'hc_search_error' not in st.session_state:
+    st.session_state.hc_search_error = ""
 
 # Tools Card: Search + Buttons (Card 2)
 # Using st.container(border=True) to create the card visual
@@ -2771,14 +2774,12 @@ with st.container(border=True):
             st.rerun()
 
     else:
-        # Search mode (default) using Typeahead (st_keyup)
-        # Dynamic filtering with debounce=300ms
-        search_query = st_keyup(
+        # Search mode (default)
+        search_query = st.text_input(
             "Search medication",
             placeholder="Search medication...",
             key="med_search_input",
-            label_visibility="collapsed",
-            debounce=300
+            label_visibility="collapsed"
         )
 
         # Calculate matches immediately (Dynamic Filtering)
@@ -2833,12 +2834,38 @@ with st.container(border=True):
                     "",
                     placeholder="Search 47K+ products...",
                     key="hc_search",
-                    label_visibility="collapsed",
-                    on_change=run_health_canada_search
+                    label_visibility="collapsed"
                 )
             with hc_col2:
                 if AppButton("Go", key="hc_search_btn"):
                     run_health_canada_search()
+
+            if (
+                st.session_state.hc_search_ran
+                and st.session_state.hc_search_last == (hc_query or "").strip()
+            ):
+                if st.session_state.hc_search_error:
+                    hc_query_clean = re.sub(r'[^\w\s]', '', st.session_state.hc_search_last).strip()
+                    hc_url = (
+                        "https://health-products.canada.ca/api/drug/drugproduct/"
+                        f"?brandname={hc_query_clean}&lang=en&type=json"
+                    )
+                    st.markdown(
+                        f"Can't reach the API? Open results in your browser: {hc_url}",
+                        unsafe_allow_html=True
+                    )
+                if st.session_state.api_search_results:
+                    with st.container(border=True):
+                        for i, med in enumerate(st.session_state.api_search_results[:10]):
+                            cat = med.get('category', 'Health Canada')
+                            if AppButton(f"➕ {med['brand_name']} — {cat}", key=f"hc_result_{i}"):
+                                st.session_state.selected_medication = {
+                                    **med,
+                                    'source': 'health_canada'
+                                }
+                                st.rerun()
+                else:
+                    st.caption("No Health Canada results found.")
 
 # =============================================================================
 # DOSE SECTION (shown after medication selected)
