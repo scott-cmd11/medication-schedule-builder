@@ -11,6 +11,76 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
+from st_keyup import st_keyup
+
+# =============================================================================
+# SHARED UI COMPONENTS
+# =============================================================================
+
+def AppButton(label, key=None, type="secondary", on_click=None, help=None, disabled=False, use_container_width=True):
+    """
+    Shared button component with consistent styling.
+    Defaults to full width (use_container_width=True).
+    Styles: h-12, rounded-2xl, flex centered, no wrap.
+    """
+    return st.button(
+        label,
+        key=key,
+        type=type,
+        on_click=on_click,
+        help=help,
+        disabled=disabled,
+        use_container_width=use_container_width
+    )
+
+def AppInput(label, value="", key=None, placeholder="", type="default", on_change=None, disabled=False, label_visibility="visible", **kwargs):
+    """
+    Shared input component with consistent styling.
+    Styles: h-12, rounded-2xl, px-4, text-base, py-0.
+    """
+    return st.text_input(
+        label,
+        value=value,
+        key=key,
+        placeholder=placeholder,
+        type=type,
+        on_change=on_change,
+        disabled=disabled,
+        label_visibility=label_visibility,
+        **kwargs
+    )
+
+def AppSelect(label, options, index=0, key=None, on_change=None, disabled=False, label_visibility="visible", **kwargs):
+    """
+    Shared select component.
+    """
+    return st.selectbox(
+        label,
+        options,
+        index=index,
+        key=key,
+        on_change=on_change,
+        disabled=disabled,
+        label_visibility=label_visibility,
+        **kwargs
+    )
+
+def AppNumberInput(label, min_value=None, max_value=None, value=None, step=None, format=None, key=None, label_visibility="visible", **kwargs):
+    """
+    Shared number input component.
+    """
+    return st.number_input(
+        label,
+        min_value=min_value,
+        max_value=max_value,
+        value=value,
+        step=step,
+        format=format,
+        key=key,
+        label_visibility=label_visibility,
+        **kwargs
+    )
+
 
 # =============================================================================
 # PAGE CONFIG & CUSTOM CSS
@@ -63,34 +133,43 @@ st.markdown("""
         --text-xl: 20px;
 
         /* Sizes */
-        --input-height: 48px;
-        --button-height: 48px;
+        --height-control: 48px;
+        --radius-control: 16px;
+        
+        --input-height: var(--height-control);
+        --button-height: var(--height-control);
         --radius-sm: 8px;
         --radius-md: 12px;
-        --radius-lg: 16px;
+        --radius-lg: var(--radius-control);
 
         /* Shadows */
-        --shadow-card: 0 1px 3px rgba(0,0,0,0.08);
-        --shadow-elevated: 0 4px 12px rgba(0,0,0,0.12);
+        --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     /* Hide Streamlit chrome */
     #MainMenu, footer, header {visibility: hidden;}
 
-    /* Neutral background */
+    /* Page Wrapper (centered, max-w-640px) */
     .stApp {
-        background: #f8f9fa;
+        background: #f1f5f9;
+        display: flex;
+        justify-content: center;
     }
 
-    /* Container */
     .block-container {
-        padding: 0 var(--space-4) var(--space-4);
-        max-width: 420px !important;
+        padding-top: var(--space-6) !important;
+        padding-bottom: var(--space-6) !important;
+        padding-left: var(--space-4) !important;
+        padding-right: var(--space-4) !important;
+        max-width: 640px !important;
+        width: 100% !important;
         margin: 0 auto;
     }
-    .stMainBlockContainer {
-        max-width: 420px !important;
-        margin: 0 auto;
+    
+    /* Ensure content stack has consistent spacing */
+    .stVerticalBlock {
+        gap: var(--space-5) !important;
     }
 
     /* Global typography */
@@ -105,9 +184,9 @@ st.markdown("""
         justify-content: space-between;
         height: 56px;
         padding: 0 var(--space-4);
-        background: white;
-        border-bottom: 1px solid var(--gray-200);
-        margin: 0 calc(-1 * var(--space-4)) var(--space-4);
+        background: transparent;
+        border-bottom: none;
+        margin: 0 calc(-1 * var(--space-4)) var(--space-3);
     }
     .app-bar-left {
         display: flex;
@@ -115,19 +194,21 @@ st.markdown("""
         gap: var(--space-2);
     }
     .app-bar-icon {
-        width: 32px;
-        height: 32px;
-        background: var(--primary);
-        border-radius: var(--radius-sm);
+        width: 36px;
+        height: 36px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: var(--radius-md);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
     .app-bar-title {
-        font-size: var(--text-lg);
-        font-weight: 600;
-        color: var(--gray-900);
+        font-size: var(--text-xl);
+        font-weight: 700;
+        color: white;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     .app-bar-btn {
         display: flex;
@@ -178,20 +259,23 @@ st.markdown("""
         opacity: 0.5;
     }
 
-    /* ===== WARNING BANNER ===== */
+    /* ===== WARNING BANNER (Floating Card) ===== */
     .warning-banner {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: var(--space-2);
         padding: var(--space-2) var(--space-3);
-        background: #fffbeb;
-        border-radius: var(--radius-sm);
+        background: white;
+        border-radius: var(--radius-md);
         font-size: var(--text-sm);
         color: #92400e;
-        margin-bottom: var(--space-4);
+        margin-bottom: var(--space-3);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.1);
     }
     .warning-banner-icon {
         flex-shrink: 0;
+        font-size: 12px;
     }
     .warning-banner-text {
         flex: 1;
@@ -202,6 +286,27 @@ st.markdown("""
         cursor: pointer;
     }
 
+    /* ===== COMPACT LINK BUTTONS ===== */
+    .compact-links {
+        display: flex;
+        gap: var(--space-3);
+        margin-top: var(--space-2);
+        margin-bottom: var(--space-2);
+    }
+    .compact-link {
+        font-size: var(--text-xs);
+        color: var(--primary);
+        cursor: pointer;
+        padding: var(--space-1) 0;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .compact-link:hover {
+        text-decoration: underline;
+    }
+
     /* ===== CARD (single style) ===== */
     .card {
         background: white;
@@ -210,6 +315,99 @@ st.markdown("""
         box-shadow: var(--shadow-card);
         margin-bottom: var(--space-4);
     }
+
+    /* ===== CARD (st.container styling) ===== */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background: white;
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        box-shadow: var(--shadow-card);
+        border: none; /* User requested removal of shadows/borders if needed, but styling allows shadow */
+        margin-bottom: var(--space-4);
+    }
+    
+    /* Remove default Streamlit border padding if needed */
+    [data-testid="stVerticalBlockBorderWrapper"] > div {
+        /* gap between elements inside card */
+    }
+
+    /* ===== HEADER CARD (Title + Warning) ===== */
+    .header-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+        margin-bottom: var(--space-4);
+    }
+    .header-card-top {
+        background: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #2dd4bf 100%);
+        padding: var(--space-3) var(--space-4);
+    }
+    .header-card-body {
+        padding: var(--space-3) var(--space-4);
+    }
+
+    /* ===== SECTION HEADERS ===== */
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: var(--space-3);
+        margin-top: var(--space-5);
+        padding: 0 var(--space-1);
+    }
+    .section-title {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        letter-spacing: 0.025em;
+        text-transform: uppercase;
+        color: var(--gray-500);
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+        background: white;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--gray-200);
+        padding: var(--space-6);
+        text-align: center;
+        color: var(--gray-500);
+    }
+    .empty-state-icon {
+        font-size: 32px;
+        margin-bottom: var(--space-2);
+        opacity: 0.7;
+    }
+
+    /* Legacy list-card for backward compatibility */
+    .list-card {
+        background: white;
+        border-radius: var(--radius-lg);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1), 0 1px 4px rgba(0, 0, 0, 0.06);
+        margin-bottom: var(--space-6);
+        padding: var(--space-4);
+    }
+    .list-card .med-list-header {
+        margin-top: 0;
+    }
+    .list-card .app-footer {
+        padding: var(--space-3) 0 0 0;
+        padding-bottom: 0;
+    }
+
+    /* ===== ADD MEDICATION SECTION (cyan tint) ===== */
+    .add-med-section {
+        background: #ecfeff;
+        margin: 0 calc(-1 * var(--space-4)) var(--space-3);
+        padding: var(--space-2) var(--space-4) var(--space-4);
+        border-bottom: 2px solid #a5f3fc;
+    }
+    .add-med-section .app-bar {
+        background: transparent;
+        border-bottom: none;
+        margin-bottom: var(--space-2);
+    }
+
     .card-header {
         margin-bottom: var(--space-4);
     }
@@ -238,44 +436,79 @@ st.markdown("""
         margin-bottom: var(--space-2);
     }
 
-    /* ===== INPUTS ===== */
-    .stTextInput > div > div {
-        border-radius: var(--radius-md);
-        min-height: var(--input-height);
+    /* ===== INPUTS & SELECTS ===== */
+    .stTextInput > div > div, .stNumberInput > div > div, .stSelectbox > div > div {
+        border-radius: var(--radius-lg) !important;
+        height: var(--input-height) !important;
+        min-height: var(--input-height) !important;
         font-size: var(--text-base);
+        background-color: white !important;
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-card);
+        padding: 0 var(--space-4) !important;
+        display: flex;
+        align-items: center;
+        box-sizing: border-box;
     }
-    .stTextInput > div > div > input {
+    .stTextInput > div > div:focus-within, .stNumberInput > div > div:focus-within, .stSelectbox > div > div:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px rgba(8, 145, 178, 0.15);
+    }
+    .stTextInput input, .stNumberInput input {
         font-size: var(--text-base);
+        line-height: normal;
+        background: transparent !important;
+        height: 100%;
+        padding: 0 !important;
+        margin: 0;
+        display: block;
+        transform: translateY(1px);
     }
-    .stNumberInput > div > div {
-        border-radius: var(--radius-md);
-        min-height: var(--input-height);
+    
+    /* Forced White Background for inner containers */
+    div[data-baseweb="input"], div[data-baseweb="base-input"] {
+        background-color: white !important;
     }
-    .stSelectbox > div > div {
-        border-radius: var(--radius-md);
-        min-height: var(--input-height);
+    /* Hide the helper text/label space if unused */
+    .stTextInput > label, .stNumberInput > label, .stSelectbox > label {
+        display: none; 
     }
 
     /* ===== BUTTONS ===== */
     .stButton > button {
         font-family: 'Inter', sans-serif;
         font-weight: 500;
-        min-height: var(--button-height);
-        font-size: var(--text-base);
-        border-radius: var(--radius-md);
-        border: none;
+        box-sizing: border-box;
+        height: var(--button-height) !important;
+        min-height: var(--button-height) !important;
+        font-size: var(--text-base) !important;
+        border-radius: var(--radius-lg) !important;
+        border: 1px solid var(--gray-200);
         transition: all 0.15s ease;
+        background: white;
+        color: var(--gray-700);
+        box-shadow: var(--shadow-card);
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: var(--space-2);
+        padding: 0 var(--space-4) !important;
+        line-height: 1; 
+        white-space: nowrap !important;
+        width: 100%;
     }
     .stButton > button:hover {
         transform: translateY(-1px);
-        box-shadow: var(--shadow-elevated);
+        background: var(--gray-50);
+        border-color: var(--gray-300);
     }
-    .stButton > button[kind="primary"] {
-        background: var(--primary);
+    .stButton > button:active {
+        transform: translateY(0);
     }
-    .stButton > button[kind="secondary"] {
-        background: var(--gray-100);
-        color: var(--gray-700);
+    /* Preview/Primary buttons */
+    .stButton > button p {
+        font-size: 16px;
+        font-weight: 500;
     }
 
     /* ===== SELECTED MEDICATION CHIP ===== */
@@ -369,26 +602,16 @@ st.markdown("""
         margin-bottom: var(--space-2);
     }
 
-    /* ===== MEDICATION LIST ===== */
-    .med-list-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: var(--space-3);
-    }
-    .med-list-title {
-        font-size: var(--text-base);
-        font-weight: 600;
-        color: var(--gray-900);
-    }
+    /* ===== MEDICATION LIST ITEMS ===== */
     .med-item {
         display: flex;
         align-items: center;
-        padding: var(--space-3) var(--space-4);
+        padding: var(--space-4);
         background: white;
         border-radius: var(--radius-lg);
         box-shadow: var(--shadow-card);
-        margin-bottom: var(--space-2);
+        margin-bottom: var(--space-3);
+        border: 1px solid var(--gray-200); /* Consistent border */
     }
     .med-item-info {
         flex: 1;
@@ -402,80 +625,106 @@ st.markdown("""
     .med-item-details {
         font-size: var(--text-sm);
         color: var(--gray-500);
-        margin-top: 2px;
+        margin-top: 4px;
     }
-    .med-item-actions {
-        display: flex;
-        gap: var(--space-2);
-    }
-    .med-item-btn {
-        width: 36px;
-        height: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--gray-100);
-        border-radius: var(--radius-sm);
-        cursor: pointer;
-        transition: background 0.15s;
-    }
-    .med-item-btn:hover {
-        background: var(--gray-200);
-    }
-
-    /* ===== EMPTY STATE ===== */
-    .empty-state {
-        text-align: center;
-        padding: var(--space-6) var(--space-4);
+    
+    /* Removed duplicative empty-state and med-list-header styles here.
+       They are now handled by the specific class definitions added earlier. */
+        border: 1px dashed var(--gray-300);
     }
     .empty-state-icon {
-        font-size: 48px;
-        margin-bottom: var(--space-3);
-        opacity: 0.4;
+        font-size: 24px;
+        margin-bottom: var(--space-1);
+        opacity: 0.5;
     }
     .empty-state-title {
-        font-size: var(--text-base);
+        font-size: var(--text-sm);
         font-weight: 500;
-        color: var(--gray-700);
-        margin-bottom: var(--space-1);
+        color: var(--gray-600);
+        margin-bottom: 0;
     }
     .empty-state-text {
-        font-size: var(--text-sm);
+        font-size: var(--text-xs);
         color: var(--gray-500);
+        display: none;
     }
 
-    /* ===== SEARCH RESULTS ===== */
+    /* ===== SEARCH RESULTS (Floating Dropdown) ===== */
+    .search-container-wrapper {
+        position: relative;
+    }
+    
     .search-results {
-        margin-top: var(--space-2);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 99999;
+        background: white;
         border: 1px solid var(--gray-200);
         border-radius: var(--radius-md);
-        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        max-height: 300px;
+        overflow-y: auto;
+        margin-top: 4px;
     }
     .search-result {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: var(--space-3);
+        padding: var(--space-3) var(--space-4);
         background: white;
-        border-bottom: 1px solid var(--gray-100);
+        border-bottom: 1px solid var(--gray-50);
         cursor: pointer;
-        transition: background 0.1s;
+        transition: all 0.15s;
+        min-height: 50px;
     }
     .search-result:last-child {
         border-bottom: none;
     }
     .search-result:hover {
-        background: var(--gray-50);
+        background: #ecfeff;
+        padding-left: var(--space-5); /* Slight movement effect */
+    }
+    .search-result-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
     .search-result-name {
         font-size: var(--text-base);
-        font-weight: 500;
+        font-weight: 600;
         color: var(--gray-900);
     }
     .search-result-cat {
-        font-size: var(--text-sm);
+        font-size: var(--text-xs);
         color: var(--gray-500);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
     }
+    .search-result-add {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-light);
+        color: white;
+        border-radius: 50%;
+        font-size: 18px;
+        font-weight: 600;
+        flex-shrink: 0;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .search-result:hover .search-result-add {
+        transform: scale(1.1);
+        background: var(--primary);
+    }
+
 
     /* ===== LINK BUTTON ===== */
     .link-btn {
@@ -515,11 +764,11 @@ st.markdown("""
         font-size: var(--text-xs);
     }
 
-    /* ===== DIVIDER ===== */
+    /* ===== DIVIDER (Compact) ===== */
     .divider {
         height: 1px;
         background: var(--gray-200);
-        margin: var(--space-4) 0;
+        margin: var(--space-2) 0;
     }
 
     /* ===== PREVIEW CARD ===== */
@@ -2234,37 +2483,33 @@ preview_btn_class = "app-bar-btn" if (has_meds and all_meds_verified) else "app-
 if 'show_preview_modal' not in st.session_state:
     st.session_state.show_preview_modal = False
 
-# Compact App Bar with Preview button integrated
-st.markdown(f'''
-<div class="app-bar">
-    <div class="app-bar-left">
-        <div class="app-bar-icon">💊</div>
-        <span class="app-bar-title">Medication Schedule</span>
-    </div>
-</div>
-''', unsafe_allow_html=True)
+# =============================================================================
+# CARD 1: ACTIONS PANEL (Title, Warning)
+# =============================================================================
 
-# Preview button positioned to align with app bar
-st.markdown('<div class="preview-btn-row">', unsafe_allow_html=True)
-preview_col1, preview_col2 = st.columns([2.5, 1])
-with preview_col2:
-    preview_disabled = not (has_meds and all_meds_verified)
-    if st.button("📄 Preview", key="app_bar_preview", disabled=preview_disabled, use_container_width=True):
-        st.session_state.show_preview_modal = True
-        st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
-
-# Slim warning banner
+# Card 1 - Header section with gradient and warning
 st.markdown('''
-<div class="warning-banner">
-    <span class="warning-banner-icon">⚠️</span>
-    <span class="warning-banner-text">Verify against patient's prescription before printing.</span>
+<div class="header-card">
+    <div class="header-card-top">
+        <div class="app-bar">
+            <div class="app-bar-left">
+                <div class="app-bar-icon">💊</div>
+                <span class="app-bar-title">Medication Schedule</span>
+            </div>
+        </div>
+    </div>
+    <div class="header-card-body">
+        <div class="warning-banner">
+            <span class="warning-banner-icon">⚠️</span>
+            <span class="warning-banner-text">Verify against patient's prescription before printing.</span>
+        </div>
+    </div>
 </div>
 ''', unsafe_allow_html=True)
 
 
 # =============================================================================
-# ADD MEDICATION CARD
+# ADD MEDICATION CARD (Tools Area)
 # =============================================================================
 
 # Initialize session states
@@ -2283,18 +2528,9 @@ if 'selected_times' not in st.session_state:
 if 'custom_doses' not in st.session_state:
     st.session_state.custom_doses = []
 
-# Card container
-st.markdown('''
-<div class="card">
-    <div class="card-header">
-        <h2 class="card-title">Add medication</h2>
-        <p class="card-subtitle">Search and add dosing schedule</p>
-    </div>
-</div>
-''', unsafe_allow_html=True)
-
-# Using a container for the card content
-with st.container():
+# Tools Card: Search + Buttons (Card 2)
+# Using st.container(border=True) to create the card visual
+with st.container(border=True):
 
     # === MEDICATION SELECTION ===
     if st.session_state.selected_medication:
@@ -2310,7 +2546,7 @@ with st.container():
 
         change_col1, change_col2 = st.columns([3, 1])
         with change_col2:
-            if st.button("Change", type="secondary", key="change_med", use_container_width=True):
+            if AppButton("Change", type="secondary", key="change_med"):
                 st.session_state.selected_medication = None
                 st.session_state.dose_value = 0.0
                 st.session_state.selected_times = []
@@ -2320,7 +2556,7 @@ with st.container():
     elif st.session_state.manual_entry_mode:
         # Manual entry mode
         st.markdown('<p class="section-label">Medication name</p>', unsafe_allow_html=True)
-        manual_name = st.text_input(
+        manual_name = AppInput(
             "Medication name",
             placeholder="Enter medication name...",
             key="manual_med_input",
@@ -2335,20 +2571,22 @@ with st.container():
             }
             st.rerun()
 
-        if st.button("← Back to search", type="secondary"):
+        if AppButton("← Back to search", type="secondary"):
             st.session_state.manual_entry_mode = False
             st.rerun()
 
     else:
-        # Search mode (default)
-        search_query = st.text_input(
+        # Search mode (default) using Typeahead (st_keyup)
+        # Dynamic filtering with debounce=300ms
+        search_query = st_keyup(
             "Search medication",
             placeholder="Search medication...",
             key="med_search_input",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            debounce=300
         )
 
-        # Show filtered results when typing (min 2 chars)
+        # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
             query_lower = search_query.lower()
             local_matches = [
@@ -2364,35 +2602,43 @@ with st.container():
             all_matches = local_matches + api_matches
 
             if all_matches:
-                st.markdown('<div class="search-results">', unsafe_allow_html=True)
-                for i, med in enumerate(all_matches):
-                    cat = med.get('category', '')
-                    if st.button(
-                        f"{med['brand_name']} — {cat}",
-                        key=f"med_result_{i}",
-                        use_container_width=True
-                    ):
-                        st.session_state.selected_medication = {
-                            **med,
-                            'source': 'health_canada' if med in st.session_state.api_search_results else 'database'
-                        }
-                        st.rerun()
-                st.markdown('</div>', unsafe_allow_html=True)
+                # Use a bordered container to mimic a dropdown list
+                with st.container(border=True):
+                    for i, med in enumerate(all_matches):
+                        cat = med.get('category', '')
+                        if AppButton(f"➕ {med['brand_name']} — {cat}", key=f"med_result_{i}"):
+                            st.session_state.selected_medication = {
+                                **med,
+                                'source': 'health_canada' if med in st.session_state.api_search_results else 'database'
+                            }
+                            st.rerun()
             else:
                 st.caption("No matches found.")
 
-        # Links row
-        link_col1, link_col2 = st.columns(2)
-        with link_col1:
-            if st.button("Not found? Add manually", key="manual_entry_btn"):
+        # Equal-width buttons row (Buttons moved below results to allow expansion)
+        if 'show_hc_search' not in st.session_state:
+            st.session_state.show_hc_search = False
+
+        btn_col1, btn_col2 = st.columns(2, gap="small")
+        with btn_col1:
+            if AppButton("✏️ Add manually", key="manual_entry_btn", type="secondary"):
                 st.session_state.manual_entry_mode = True
                 st.rerun()
-        with link_col2:
-            with st.expander("Search Health Canada", expanded=False):
-                hc_query = st.text_input("", placeholder="Search 47K+ products...", key="hc_search", label_visibility="collapsed")
-                if st.button("Search", key="hc_search_btn", use_container_width=True):
+        with btn_col2:
+            if AppButton("🔍 Browse meds", key="hc_toggle_btn", type="secondary"):
+                st.session_state.show_hc_search = not st.session_state.show_hc_search
+                st.rerun()
+
+        # Health Canada search (collapsible)
+        if st.session_state.show_hc_search:
+            st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+            hc_col1, hc_col2 = st.columns([6, 1], gap="small")
+            with hc_col1:
+                hc_query = AppInput("", placeholder="Search 47K+ products...", key="hc_search", label_visibility="collapsed")
+            with hc_col2:
+                if AppButton("Go", key="hc_search_btn"):
                     if hc_query:
-                        with st.spinner("Searching..."):
+                        with st.spinner("..."):
                             api_results = search_health_canada_api(hc_query)
                             if api_results:
                                 st.session_state.api_search_results = api_results
@@ -2410,7 +2656,7 @@ if st.session_state.selected_medication:
 
     dose_col1, dose_col2 = st.columns([2, 1])
     with dose_col1:
-        dose_val = st.number_input(
+        dose_val = AppNumberInput(
             "Amount",
             min_value=0.0,
             max_value=10000.0,
@@ -2427,7 +2673,7 @@ if st.session_state.selected_medication:
     with dose_col2:
         unit_options = ["mg", "mcg", "g", "mL", "units", "puffs", "tablet"]
         current_idx = unit_options.index(st.session_state.dose_unit) if st.session_state.dose_unit in unit_options else 0
-        dose_unit = st.selectbox(
+        dose_unit = AppSelect(
             "Unit",
             options=unit_options,
             index=current_idx,
@@ -2460,17 +2706,17 @@ if st.session_state.selected_medication:
                     key="direction_radio"
                 )
 
-                g_col1, g_col2 = st.columns(2)
+                g_col1, g_col2 = st.columns(2, gap="small")
                 with g_col1:
-                    start_dose = st.number_input("Start", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="grad_start")
+                    start_dose = AppNumberInput("Start", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="grad_start")
                 with g_col2:
-                    end_dose = st.number_input("End", min_value=0.0, value=0.0, step=0.5, format="%.1f", key="grad_end")
+                    end_dose = AppNumberInput("End", min_value=0.0, value=0.0, step=0.5, format="%.1f", key="grad_end")
 
-                g_col3, g_col4 = st.columns(2)
+                g_col3, g_col4 = st.columns(2, gap="small")
                 with g_col3:
-                    change_amt = st.number_input("Change by", min_value=0.1, value=5.0, step=0.5, format="%.1f", key="grad_change")
+                    change_amt = AppNumberInput("Change by", min_value=0.1, value=5.0, step=0.5, format="%.1f", key="grad_change")
                 with g_col4:
-                    change_days = st.number_input("Every X days", min_value=1, value=7, step=1, key="grad_days")
+                    change_days = AppNumberInput("Every X days", min_value=1, value=7, step=1, key="grad_days")
 
                 # Calculate schedule
                 is_taper = "Taper" in direction
@@ -2516,19 +2762,19 @@ if st.session_state.selected_medication:
                     with c2:
                         st.text(f"{cd['dose']} {st.session_state.dose_unit}")
                     with c3:
-                        if st.button("✕", key=f"rm_cd_{i}"):
+                        if AppButton("✕", key=f"rm_cd_{i}"):
                             st.session_state.custom_doses.pop(i)
                             st.rerun()
 
                 cc1, cc2, cc3 = st.columns(3)
                 with cc1:
-                    cd_start = st.number_input("From", min_value=1, value=1, key="cd_from")
+                    cd_start = AppNumberInput("From", min_value=1, value=1, key="cd_from")
                 with cc2:
-                    cd_end = st.number_input("To", min_value=1, value=7, key="cd_to")
+                    cd_end = AppNumberInput("To", min_value=1, value=7, key="cd_to")
                 with cc3:
-                    cd_dose = st.number_input("Dose", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="cd_dose")
+                    cd_dose = AppNumberInput("Dose", min_value=0.0, value=st.session_state.dose_value, step=0.5, format="%.1f", key="cd_dose")
 
-                if st.button("Add range", use_container_width=True, key="add_cd_range"):
+                if AppButton("Add range", key="add_cd_range"):
                     st.session_state.custom_doses.append({"start_day": cd_start, "end_day": cd_end, "dose": cd_dose})
                     st.rerun()
 
@@ -2542,108 +2788,94 @@ if st.session_state.selected_medication:
 if st.session_state.selected_medication:
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     st.markdown('<p class="section-label">Times</p>', unsafe_allow_html=True)
-    st.markdown('<p class="section-helper">Tap to select</p>', unsafe_allow_html=True)
 
-    # Time chip buttons in 2x2 grid
+    # Time chip buttons in 2x2 grid (compact)
     time_options = [
-        ("Morning", "☀️ Morning"),
+        ("Morning", "☀️ AM"),
         ("Noon", "🕛 Noon"),
-        ("Evening", "🌙 Evening"),
-        ("Bedtime", "🛏️ Bedtime")
+        ("Evening", "🌙 PM"),
+        ("Bedtime", "🛏️ Bed")
     ]
 
-    chip_cols = st.columns(2)
+    chip_cols = st.columns(4)
     for i, (key, label) in enumerate(time_options):
-        with chip_cols[i % 2]:
+        with chip_cols[i]:
             is_selected = key in st.session_state.selected_times
             btn_type = "primary" if is_selected else "secondary"
             display_label = f"✓ {label}" if is_selected else label
 
-            if st.button(display_label, key=f"time_chip_{key}", use_container_width=True, type=btn_type):
+            if AppButton(display_label, key=f"time_chip_{key}", type=btn_type):
                 if is_selected:
                     st.session_state.selected_times.remove(key)
                 else:
                     st.session_state.selected_times.append(key)
                 st.rerun()
 
-# =============================================================================
-# STICKY CTA BAR
-# =============================================================================
+    # =========================================================================
+    # INLINE ADD BUTTON (appears only when medication is being configured)
+    # =========================================================================
 
-# Determine medication name and source
-medication_name = None
-source_type = None
-if st.session_state.selected_medication:
+    # Determine medication name and source
     medication_name = st.session_state.selected_medication.get('brand_name', st.session_state.selected_medication.get('name'))
     source_type = st.session_state.selected_medication.get('source', 'database')
 
-# Validation
-validation_errors = []
-if not medication_name:
-    validation_errors.append("Select a medication")
-if st.session_state.dose_value <= 0:
-    validation_errors.append("Enter dose amount")
-if not st.session_state.selected_times:
-    validation_errors.append("Select at least one time")
+    # Validation
+    can_add = st.session_state.dose_value > 0 and len(st.session_state.selected_times) > 0
 
-add_disabled = len(validation_errors) > 0
+    # Compact summary + Add button in single row
+    if can_add:
+        times_str = ", ".join(st.session_state.selected_times)
+        st.markdown(f'''
+        <div style="background: var(--success-light); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); margin-top: var(--space-2); display: flex; align-items: center; justify-content: space-between;">
+            <span style="font-size: var(--text-sm); color: var(--gray-700);">
+                <strong>{medication_name}</strong> • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}
+            </span>
+        </div>
+        ''', unsafe_allow_html=True)
 
-# Build summary
-if medication_name:
-    times_str = ", ".join(st.session_state.selected_times) if st.session_state.selected_times else "No times"
-    summary = f"{medication_name} • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}"
-else:
-    summary = "Select a medication to continue"
+        # Add to list button
+        if AppButton("✓ Add to List", type="primary", key="add_med_btn"):
+            # Build dose schedule if variable dosing was used
+            final_dose_schedule = None
+            final_variable_dosing = False
+            if 'var_dose_check' in st.session_state and st.session_state.var_dose_check:
+                final_variable_dosing = True
+                if 'dose_schedule' in dir() and dose_schedule:
+                    final_dose_schedule = dose_schedule
 
-# Show error if needed
-st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+            new_med = {
+                'name': medication_name,
+                'strength_value': st.session_state.dose_value,
+                'strength_unit': st.session_state.dose_unit,
+                'time_slots': st.session_state.selected_times.copy(),
+                'source': source_type,
+                'added_at': datetime.now().isoformat(),
+                'variable_dosing': final_variable_dosing,
+                'dose_schedule': final_dose_schedule
+            }
 
-if validation_errors and medication_name:
-    error_text = " · ".join(validation_errors)
-    st.markdown(f'<p class="sticky-bar-error">{error_text}</p>', unsafe_allow_html=True)
+            st.session_state.med_list.append(new_med)
 
-# Summary line
-st.markdown(f'<p class="sticky-bar-summary">{summary}</p>', unsafe_allow_html=True)
+            # Reset form state
+            st.session_state.selected_medication = None
+            st.session_state.dose_value = 0.0
+            st.session_state.selected_times = []
+            st.session_state.custom_doses = []
+            st.session_state.manual_entry_mode = False
 
-# Add button
-if st.button(
-    "Add Medication",
-    type="primary",
-    disabled=add_disabled,
-    use_container_width=True,
-    key="add_med_btn"
-):
-    # Build dose schedule if variable dosing was used
-    final_dose_schedule = None
-    final_variable_dosing = False
-    if 'var_dose_check' in st.session_state and st.session_state.var_dose_check:
-        final_variable_dosing = True
-        if 'dose_schedule' in dir() and dose_schedule:
-            final_dose_schedule = dose_schedule
+            reset_all_verifications()
+            st.toast(f"'{medication_name}' added!")
+            st.rerun()
+    else:
+        # Show what's missing
+        missing = []
+        if st.session_state.dose_value <= 0:
+            missing.append("dose")
+        if not st.session_state.selected_times:
+            missing.append("time")
+        st.caption(f"Enter {' and '.join(missing)} to add")
 
-    new_med = {
-        'name': medication_name,
-        'strength_value': st.session_state.dose_value,
-        'strength_unit': st.session_state.dose_unit,
-        'time_slots': st.session_state.selected_times.copy(),
-        'source': source_type,
-        'added_at': datetime.now().isoformat(),
-        'variable_dosing': final_variable_dosing,
-        'dose_schedule': final_dose_schedule
-    }
 
-    st.session_state.med_list.append(new_med)
-
-    # Reset form state
-    st.session_state.selected_medication = None
-    st.session_state.dose_value = 0.0
-    st.session_state.selected_times = []
-    st.session_state.custom_doses = []
-    st.session_state.manual_entry_mode = False
-
-    reset_all_verifications()
-    st.toast(f"'{medication_name}' added!")
-    st.rerun()
 
 
 # =============================================================================
@@ -2674,19 +2906,24 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
     ''', unsafe_allow_html=True)
 
     # Action buttons
-    btn_col1, btn_col2, btn_col3 = st.columns(3)
+    btn_col1, btn_col2, btn_col3 = st.columns(3, gap="small")
 
     with btn_col1:
-        # Print button - opens PDF in new tab
+        # "View PDF" button (Styled EXACTLY like a primary button)
+        # Using a full-width div wrapper to simulate use_container_width=True behavior
         st.markdown(f'''
             <a href="data:application/pdf;base64,{pdf_base64}"
                target="_blank"
-               style="display: inline-flex; align-items: center; justify-content: center;
-                      width: 100%; padding: 0.75rem 1rem;
+               title="Open PDF in new tab"
+               style="display: flex; align-items: center; justify-content: center;
+                      width: 100%; height: 50px;
                       background-color: var(--primary); color: white;
                       text-decoration: none; border-radius: var(--radius-md);
-                      font-weight: 500; font-size: var(--text-sm);">
-                🖨️ Print
+                      font-weight: 600; font-size: var(--text-base);
+                      border: 1px solid rgba(255,255,255,0.2);
+                      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                      transition: all 0.2s;">
+                📄 View PDF
             </a>
         ''', unsafe_allow_html=True)
 
@@ -2700,7 +2937,7 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
         )
 
     with btn_col3:
-        if st.button("✕ Close", key="close_preview", use_container_width=True):
+        if AppButton("✕ Close", key="close_preview", type="secondary", use_container_width=True):
             st.session_state.show_preview_modal = False
             st.rerun()
 
@@ -2708,13 +2945,13 @@ if st.session_state.show_preview_modal and has_meds and all_meds_verified:
 
 
 # =============================================================================
-# PATIENT MEDICATIONS LIST
+# CARD 2: LIST PANEL (Patient Medications, Preview, Footer)
 # =============================================================================
 
-# List header
+# Card 2 - List Panel (Renamed to Section Header)
 st.markdown('''
-<div class="med-list-header">
-    <span class="med-list-title">Patient medications</span>
+<div class="section-header">
+    <span class="section-title">Patient Medications</span>
 </div>
 ''', unsafe_allow_html=True)
 
@@ -2765,11 +3002,31 @@ else:
             st.session_state.verification_states[idx] = verified
 
         with action_col2:
-            if st.button("🗑️", key=f"remove_{idx}", help="Remove"):
+            if AppButton("🗑️", key=f"remove_{idx}", help="Remove"):
                 st.session_state.med_list.pop(idx)
                 reset_all_verifications()
                 st.toast("Removed")
                 st.rerun()
+
+# =============================================================================
+# PREVIEW SCHEDULE BUTTON (after medication list)
+# =============================================================================
+
+st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+
+has_meds = len(st.session_state.med_list) > 0
+all_verified = check_all_verified() if has_meds else False
+
+if has_meds and all_verified:
+    if AppButton("📄 Preview Schedule", key="preview_schedule_btn", type="primary"):
+        st.session_state.show_preview_modal = True
+        st.rerun()
+elif has_meds:
+    AppButton("📄 Preview Schedule", key="preview_schedule_btn", disabled=True)
+    st.markdown('<p style="text-align: center; font-size: 12px; color: #6b7280;">✓ Verify all medications above to enable preview</p>', unsafe_allow_html=True)
+else:
+    AppButton("📄 Preview Schedule", key="preview_schedule_btn", disabled=True)
+    st.markdown('<p style="text-align: center; font-size: 12px; color: #6b7280;">Add medications above to generate schedule</p>', unsafe_allow_html=True)
 
 
 # =============================================================================
