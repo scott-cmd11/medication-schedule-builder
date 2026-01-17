@@ -2851,7 +2851,7 @@ with st.container(border=True):
                         f"?brandname={hc_query_clean}&lang=en&type=json"
                     )
                     st.markdown(
-                        f"Can't reach the API? Open results in your browser: {hc_url}",
+                        f'Can\'t reach the API? <a href="{hc_url}" target="_blank" rel="noopener noreferrer">Open results in your browser</a>.',
                         unsafe_allow_html=True
                     )
                 if st.session_state.api_search_results:
