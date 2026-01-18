@@ -2165,7 +2165,8 @@ def search_medications(query):
     results = []
 
     for med in MEDICATION_DATABASE:
-        if query_upper in med['brand_name']:
+        # Robust case-insensitive check
+        if query_upper in med['brand_name'].upper():
             results.append({
                 'brand_name': med['brand_name'],
                 'company': med['company'],
@@ -2174,11 +2175,12 @@ def search_medications(query):
             })
 
     # Sort by how well it matches (starts with query first)
-    results.sort(key=lambda x: (not x['brand_name'].startswith(query_upper), x['brand_name']))
+    results.sort(key=lambda x: (not x['brand_name'].upper().startswith(query_upper), x['brand_name']))
 
     return results[:20]
 
 
+@st.cache_data(ttl=600, show_spinner=False)
 def search_health_canada_api(query):
     """Search Health Canada's full drug database API."""
     if not query or len(query) < 2:
@@ -2455,6 +2457,7 @@ def generate_preview_html(med_list):
     return html
 
 
+@st.cache_data(show_spinner=False)
 def generate_pdf(med_list):
     """Generate a landscape PDF with monthly calendar view."""
     import calendar
@@ -2785,10 +2788,9 @@ with st.container(border=True):
         # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
             query_lower = search_query.lower()
-            local_matches = [
-                med for med in MEDICATION_DATABASE
-                if query_lower in med['brand_name'].lower()
-            ][:6]
+
+            # Optimized local search
+            local_matches = search_medications(search_query)[:6]
 
             api_matches = [
                 med for med in st.session_state.api_search_results
