@@ -2455,6 +2455,7 @@ def generate_preview_html(med_list):
     return html
 
 
+@st.cache_data(show_spinner="Generating PDF...")
 def generate_pdf(med_list):
     """Generate a landscape PDF with monthly calendar view."""
     import calendar
@@ -2784,12 +2785,10 @@ with st.container(border=True):
 
         # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
-            query_lower = search_query.lower()
-            local_matches = [
-                med for med in MEDICATION_DATABASE
-                if query_lower in med['brand_name'].lower()
-            ][:6]
+            # Use shared search function (optimized & sorted)
+            local_matches = search_medications(search_query)[:6]
 
+            query_lower = search_query.lower()
             api_matches = [
                 med for med in st.session_state.api_search_results
                 if query_lower in med['brand_name'].lower()
