@@ -1,0 +1,3 @@
+## 2026-01-20 - Static List Literal Performance
+**Learning:** Initializing a large list of dictionaries (1000 items) using a static list literal in Python is extremely fast (microseconds) and happens at module import time (or once per rerun in Streamlit). Attempting to cache this using `st.cache_data` introduces overhead (hashing, pickling/unpickling) that outweighs the construction cost, leading to potential performance degradation rather than improvement.
+**Action:** Do not cache static data structures unless they require significant computation (e.g., parsing JSON files, heavy transformations). Use `timeit` to verify assumptions about "large" data initialization.
