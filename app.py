@@ -6,7 +6,6 @@ A mobile-first Streamlit application with strict "Checks & Balances"
 
 import streamlit as st
 import requests
-import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
@@ -2455,6 +2454,7 @@ def generate_preview_html(med_list):
     return html
 
 
+@st.cache_data
 def generate_pdf(med_list):
     """Generate a landscape PDF with monthly calendar view."""
     import calendar
