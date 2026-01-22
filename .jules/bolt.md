@@ -1,0 +1,3 @@
+## 2026-01-22 - [Optimization: Avoid Repeated String Lowercasing in Loops]
+**Learning:** In Python, calling `.lower()` on string literals inside a loop or list comprehension (e.g., `[x for x in data if query.lower() in x['name'].lower()]`) is significantly slower than pre-computing the case or ensuring the dataset is normalized. For the medication database (~1000 items), switching from inline `.lower()` to comparing against uppercase raw data (which was already normalized) resulted in a ~2x speedup (0.88s vs 1.84s for 10k iterations).
+**Action:** Always prefer comparing against normalized data (e.g., stored as uppercase) or pre-computing transformations outside the loop. Use dedicated search functions that encapsulate this logic rather than inline comprehensions.
