@@ -1,0 +1,3 @@
+## 2026-01-23 - Duplicate Search Logic Bottleneck
+**Learning:** The application contained duplicated search logic in the render loop that was significantly less efficient (O(N*M)) than the centralized `search_medications` function (O(N)). The inline version was lowercasing every database entry on every keystroke, whereas the centralized function optimizes this by uppercasing the query once and comparing against the pre-normalized (uppercase) database.
+**Action:** Always prefer using the centralized `search_medications` function for searching `MEDICATION_DATABASE`. Avoid inline list comprehensions that perform string transformations on the entire database during the render cycle.
