@@ -1,0 +1,3 @@
+## 2024-05-23 - Streamlit Re-execution & Linear Scans
+**Learning:** Streamlit re-executes the entire script top-to-bottom on every interaction (button click, input change). Linear scans of large datasets (like `MEDICATION_DATABASE`) inside the main execution flow cause significant latency, even if the user isn't searching. This accumulates latency on every single interaction.
+**Action:** Always wrap search/compute logic for static datasets in a function decorated with `@st.cache_data`. This ensures the search is O(1) on reruns if inputs haven't changed, and avoids reconstructing/scanning the list unnecessarily.
