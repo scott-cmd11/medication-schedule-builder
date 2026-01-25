@@ -11,6 +11,7 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
+import html as html_lib
 
 # =============================================================================
 # SHARED UI COMPONENTS
@@ -3226,12 +3227,17 @@ else:
         # Build times string
         times_str = " · ".join(med.get('time_slots', []))
 
+        # Sanitize inputs for HTML rendering
+        safe_name = html_lib.escape(str(med['name']))
+        safe_dose = html_lib.escape(str(dose_str))
+        safe_times = html_lib.escape(str(times_str))
+
         # Render medication item card
         st.markdown(f'''
         <div class="med-item">
             <div class="med-item-info">
-                <div class="med-item-name">{med['name']}</div>
-                <div class="med-item-details">{dose_str} · {times_str}</div>
+                <div class="med-item-name">{safe_name}</div>
+                <div class="med-item-details">{safe_dose} · {safe_times}</div>
             </div>
         </div>
         ''', unsafe_allow_html=True)
