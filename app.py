@@ -2156,27 +2156,24 @@ if 'verification_states' not in st.session_state:
 # HELPER FUNCTIONS
 # =============================================================================
 
+@st.cache_data
 def search_medications(query):
     """Search local medication database - instant results."""
     if not query or len(query) < 1:
         return []
 
     query_upper = query.upper()
-    results = []
 
-    for med in MEDICATION_DATABASE:
-        if query_upper in med['brand_name']:
-            results.append({
-                'brand_name': med['brand_name'],
-                'company': med['company'],
-                'category': med['category'],
-                'source': 'Local Database'
-            })
+    # Filter matches using original objects (efficient)
+    results = [
+        med for med in MEDICATION_DATABASE
+        if query_upper in med['brand_name']
+    ]
 
-    # Sort by how well it matches (starts with query first)
-    results.sort(key=lambda x: (not x['brand_name'].startswith(query_upper), x['brand_name']))
+    # Sort by starts_with (stable sort preserves DB order for tie-breakers)
+    results.sort(key=lambda x: not x['brand_name'].startswith(query_upper))
 
-    return results[:20]
+    return results
 
 
 def search_health_canada_api(query):
@@ -2784,15 +2781,11 @@ with st.container(border=True):
 
         # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
-            query_lower = search_query.lower()
-            local_matches = [
-                med for med in MEDICATION_DATABASE
-                if query_lower in med['brand_name'].lower()
-            ][:6]
+            local_matches = search_medications(search_query)[:6]
 
             api_matches = [
                 med for med in st.session_state.api_search_results
-                if query_lower in med['brand_name'].lower()
+                if search_query.lower() in med['brand_name'].lower()
             ][:4]
 
             all_matches = local_matches + api_matches

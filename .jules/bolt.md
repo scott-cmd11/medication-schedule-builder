@@ -1,0 +1,3 @@
+## 2026-01-26 - Streamlit Search Performance
+**Learning:** In Streamlit apps, the entire script runs on every interaction. Inline list comprehensions that process global constants (like filtering a database) run repeatedly, even if inputs haven't changed or if the calculation is static.
+**Action:** Use `@st.cache_data` for any search/filter logic on static datasets, even if the dataset is small (1k items), to prevent unnecessary CPU cycles and object creation during reruns. Also, avoid repetitive string transformations (like `.lower()`) inside loops when data is known to be normalized (e.g., all uppercase).
