@@ -11,6 +11,7 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
+import html as html_lib
 
 # =============================================================================
 # SHARED UI COMPONENTS
@@ -2388,8 +2389,8 @@ def generate_calendar_html(med_list):
                             dose_indicator = " ↑"
                     html += f'''
                     <div class="{card_class}">
-                        <div class="med-title">{med['name']}</div>
-                        <div class="med-dose">{day_dose} {med['strength_unit']}{dose_indicator}</div>
+                        <div class="med-title">{html_lib.escape(str(med['name']))}</div>
+                        <div class="med-dose">{html_lib.escape(str(day_dose))} {html_lib.escape(str(med['strength_unit']))}{dose_indicator}</div>
                     </div>
                     '''
             html += '</td>'
@@ -2426,8 +2427,8 @@ def generate_preview_html(med_list):
         html += f'''
             <tr style="background-color: {bg_color};">
                 <td style="padding: 10px; border: 1px solid #e0e0e0;">
-                    <strong>{med['name']}</strong>{source_label}<br>
-                    <span style="color: #616161;">{med['strength_value']} {med['strength_unit']}</span>
+                    <strong>{html_lib.escape(str(med['name']))}</strong>{source_label}<br>
+                    <span style="color: #616161;">{html_lib.escape(str(med['strength_value']))} {html_lib.escape(str(med['strength_unit']))}</span>
                 </td>
         '''
 
@@ -2436,7 +2437,7 @@ def generate_preview_html(med_list):
                 html += f'''
                     <td style="padding: 10px; border: 1px solid #e0e0e0; text-align: center; background-color: #c8e6c9;">
                         <strong>X</strong><br>
-                        <span style="font-size: 0.8rem;">{med['strength_value']} {med['strength_unit']}</span>
+                        <span style="font-size: 0.8rem;">{html_lib.escape(str(med['strength_value']))} {html_lib.escape(str(med['strength_unit']))}</span>
                     </td>
                 '''
             else:
@@ -2740,7 +2741,7 @@ with st.container(border=True):
         with chip_col:
             st.markdown(f'''
                 <div class="selected-chip compact">
-                    <span class="selected-chip-name">{med_name}</span>
+                    <span class="selected-chip-name">{html_lib.escape(str(med_name))}</span>
                 </div>
             ''', unsafe_allow_html=True)
         with btn_col:
@@ -3060,7 +3061,7 @@ if st.session_state.selected_medication:
         st.markdown(f'''
         <div style="background: var(--success-light); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); margin-top: var(--space-2); display: flex; align-items: center; justify-content: space-between;">
             <span style="font-size: var(--text-sm); color: var(--gray-700);">
-                <strong>{medication_name}</strong> • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}
+                <strong>{html_lib.escape(str(medication_name))}</strong> • {html_lib.escape(str(st.session_state.dose_value))} {html_lib.escape(str(st.session_state.dose_unit))} • {html_lib.escape(str(times_str))}
             </span>
         </div>
         ''', unsafe_allow_html=True)
@@ -3230,8 +3231,8 @@ else:
         st.markdown(f'''
         <div class="med-item">
             <div class="med-item-info">
-                <div class="med-item-name">{med['name']}</div>
-                <div class="med-item-details">{dose_str} · {times_str}</div>
+                <div class="med-item-name">{html_lib.escape(str(med['name']))}</div>
+                <div class="med-item-details">{html_lib.escape(str(dose_str))} · {html_lib.escape(str(times_str))}</div>
             </div>
         </div>
         ''', unsafe_allow_html=True)
