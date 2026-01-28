@@ -11,6 +11,7 @@ from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
 import base64
+import html as html_lib
 
 # =============================================================================
 # SHARED UI COMPONENTS
@@ -2736,6 +2737,7 @@ with st.container(border=True):
         # Show selected medication chip + change button in one row
         med = st.session_state.selected_medication
         med_name = med.get('brand_name', med.get('name', 'Unknown'))
+        med_name = html_lib.escape(med_name)
         chip_col, btn_col = st.columns([4, 1])
         with chip_col:
             st.markdown(f'''
@@ -3057,10 +3059,11 @@ if st.session_state.selected_medication:
     # Compact summary + Add button in single row
     if can_add:
         times_str = ", ".join(st.session_state.selected_times)
+        safe_med_name = html_lib.escape(medication_name)
         st.markdown(f'''
         <div style="background: var(--success-light); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); margin-top: var(--space-2); display: flex; align-items: center; justify-content: space-between;">
             <span style="font-size: var(--text-sm); color: var(--gray-700);">
-                <strong>{medication_name}</strong> • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}
+                <strong>{safe_med_name}</strong> • {st.session_state.dose_value} {st.session_state.dose_unit} • {times_str}
             </span>
         </div>
         ''', unsafe_allow_html=True)
@@ -3227,10 +3230,11 @@ else:
         times_str = " · ".join(med.get('time_slots', []))
 
         # Render medication item card
+        safe_med_name = html_lib.escape(med['name'])
         st.markdown(f'''
         <div class="med-item">
             <div class="med-item-info">
-                <div class="med-item-name">{med['name']}</div>
+                <div class="med-item-name">{safe_med_name}</div>
                 <div class="med-item-details">{dose_str} · {times_str}</div>
             </div>
         </div>
