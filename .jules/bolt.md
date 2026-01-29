@@ -1,0 +1,3 @@
+## 2024-05-22 - PDF Generation Caching
+**Learning:** Streamlit re-executes the entire script on every interaction. Expensive operations like PDF generation inside a modal (which encourages interaction like checkboxes) must be cached. To cache effectively when time-sensitive data (like "Generated at") is involved, pass the time as an argument (rounded to a suitable granularity like 1 minute) rather than computing it inside the cached function.
+**Action:** Use `@st.cache_data` for expensive rendering functions and pass volatile dependencies (time) as arguments to control cache invalidation frequency.
