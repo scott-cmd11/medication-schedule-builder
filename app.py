@@ -2455,14 +2455,15 @@ def generate_preview_html(med_list):
     return html
 
 
-def generate_pdf(med_list):
+@st.cache_data
+def generate_pdf(med_list, generation_time=None):
     """Generate a landscape PDF with monthly calendar view."""
     import calendar
 
     pdf = FPDF(orientation='L', unit='mm', format='A4')
     pdf.set_auto_page_break(auto=False)
 
-    today = datetime.now()
+    today = generation_time if generation_time else datetime.now()
     current_month = today.month
     current_year = today.year
 
@@ -2648,7 +2649,7 @@ def generate_pdf(med_list):
     pdf.ln(10)
     pdf.set_font('Helvetica', 'I', 8)
     pdf.set_text_color(100, 100, 100)
-    pdf.cell(0, 5, f'Generated: {datetime.now().strftime("%Y-%m-%d %H:%M")}', ln=True, align='C')
+    pdf.cell(0, 5, f'Generated: {today.strftime("%Y-%m-%d %H:%M")}', ln=True, align='C')
 
     pdf.ln(3)
     pdf.set_fill_color(255, 235, 238)
@@ -3116,7 +3117,9 @@ if st.session_state.selected_medication:
 
 if st.session_state.show_preview_modal and has_meds and all_meds_verified:
     # Generate PDF
-    pdf_bytes = generate_pdf(st.session_state.med_list)
+    # Round to nearest minute to allow caching while keeping timestamp relatively fresh
+    generation_timestamp = datetime.now().replace(second=0, microsecond=0)
+    pdf_bytes = generate_pdf(st.session_state.med_list, generation_timestamp)
     pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
 
     # Preview card header
