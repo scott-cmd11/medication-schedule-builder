@@ -2151,6 +2151,9 @@ if 'med_list' not in st.session_state:
 if 'verification_states' not in st.session_state:
     st.session_state.verification_states = {}
 
+if 'confirm_delete_id' not in st.session_state:
+    st.session_state.confirm_delete_id = None
+
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -3237,7 +3240,13 @@ else:
         ''', unsafe_allow_html=True)
 
         # Actions row
-        action_col1, action_col2 = st.columns([4, 1])
+        med_id = med.get('added_at', str(idx))
+        is_confirming = st.session_state.confirm_delete_id == med_id
+
+        if is_confirming:
+            action_col1, action_col2 = st.columns([3, 1.5])
+        else:
+            action_col1, action_col2 = st.columns([4, 1])
 
         with action_col1:
             verified = st.checkbox(
@@ -3248,11 +3257,23 @@ else:
             st.session_state.verification_states[idx] = verified
 
         with action_col2:
-            if AppButton("🗑️", key=f"remove_{idx}", help="Remove"):
-                st.session_state.med_list.pop(idx)
-                reset_all_verifications()
-                st.toast("Removed")
-                st.rerun()
+            if is_confirming:
+                c1, c2 = st.columns(2, gap="small")
+                with c1:
+                    if AppButton("✓", key=f"conf_del_{idx}", type="primary", help="Confirm"):
+                        st.session_state.med_list.pop(idx)
+                        st.session_state.confirm_delete_id = None
+                        reset_all_verifications()
+                        st.toast("Removed")
+                        st.rerun()
+                with c2:
+                    if AppButton("✕", key=f"canc_del_{idx}", help="Cancel"):
+                        st.session_state.confirm_delete_id = None
+                        st.rerun()
+            else:
+                if AppButton("🗑️", key=f"remove_{idx}", help="Remove"):
+                    st.session_state.confirm_delete_id = med_id
+                    st.rerun()
 
 # =============================================================================
 # PREVIEW SCHEDULE BUTTON (after medication list)
