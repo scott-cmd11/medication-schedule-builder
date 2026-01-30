@@ -1,0 +1,3 @@
+## 2024-10-26 - Streamlit Caching & Error Handling
+**Learning:** Streamlit's `@st.cache_data` caches the return value of a function, regardless of whether it represents a success or failure state. If an API wrapper returns an error tuple (e.g., `([], "Timeout")`), Streamlit will cache this error, causing the application to show "Timeout" to the user for the duration of the TTL, even if the API recovers immediately.
+**Action:** When caching external API calls, separate the request logic into a dedicated function that *raises exceptions* on failure. Decorate this inner function with `@st.cache_data`. Wrap it in a `try/except` block in the outer function to handle errors gracefully without caching them.

@@ -2179,6 +2179,48 @@ def search_medications(query):
     return results[:20]
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_health_canada_data(clean_query):
+    """Fetch data from Health Canada API (Cached)."""
+    url = "https://health-products.canada.ca/api/drug/drugproduct/"
+    params = {
+        'brandname': clean_query,
+        'lang': 'en',
+        'type': 'json'
+    }
+    headers = {
+        'User-Agent': 'Medication Schedule Builder/1.0'
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
+    except requests.exceptions.ReadTimeout:
+        response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
+
+    if response.status_code != 200:
+        raise Exception(f"Health Canada API error ({response.status_code}).")
+
+    data = response.json()
+
+    results = []
+    seen_names = set()
+
+    for item in data[:100]:
+        brand_name = item.get('brand_name', '').strip()
+        company = item.get('company_name', '').strip()
+
+        if brand_name and brand_name.upper() not in seen_names:
+            seen_names.add(brand_name.upper())
+            results.append({
+                'brand_name': brand_name,
+                'company': company if company else 'Health Canada DPD',
+                'category': 'Health Canada',
+                'source': 'Health Canada API'
+            })
+
+    return results[:30]
+
+
 def search_health_canada_api(query):
     """Search Health Canada's full drug database API."""
     if not query or len(query) < 2:
@@ -2186,46 +2228,15 @@ def search_health_canada_api(query):
 
     try:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
-        url = "https://health-products.canada.ca/api/drug/drugproduct/"
-        params = {
-            'brandname': clean_query,
-            'lang': 'en',
-            'type': 'json'
-        }
-        headers = {
-            'User-Agent': 'Medication Schedule Builder/1.0'
-        }
-
-        try:
-            response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
-        except requests.exceptions.ReadTimeout:
-            response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
-        if response.status_code != 200:
-            return [], f"Health Canada API error ({response.status_code})."
-
-        data = response.json()
-
-        results = []
-        seen_names = set()
-
-        for item in data[:100]:
-            brand_name = item.get('brand_name', '').strip()
-            company = item.get('company_name', '').strip()
-
-            if brand_name and brand_name.upper() not in seen_names:
-                seen_names.add(brand_name.upper())
-                results.append({
-                    'brand_name': brand_name,
-                    'company': company if company else 'Health Canada DPD',
-                    'category': 'Health Canada',
-                    'source': 'Health Canada API'
-                })
-
-        return results[:30], None
-
+        results = _fetch_health_canada_data(clean_query)
+        return results, None
     except requests.exceptions.Timeout:
         return [], "Health Canada API timed out. Please try again or check your network."
     except Exception as e:
+        # Check for status code error message
+        msg = str(e)
+        if "Health Canada API error" in msg:
+            return [], msg
         return [], "Health Canada API request failed."
 
 
