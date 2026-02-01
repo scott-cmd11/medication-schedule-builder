@@ -2784,12 +2784,13 @@ with st.container(border=True):
 
         # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
-            query_lower = search_query.lower()
+            query_upper = search_query.upper()
             local_matches = [
                 med for med in MEDICATION_DATABASE
-                if query_lower in med['brand_name'].lower()
+                if query_upper in med['brand_name']
             ][:6]
 
+            query_lower = search_query.lower()
             api_matches = [
                 med for med in st.session_state.api_search_results
                 if query_lower in med['brand_name'].lower()
