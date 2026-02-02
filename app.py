@@ -2179,31 +2179,40 @@ def search_medications(query):
     return results[:20]
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_health_canada_data(query):
+    """
+    Cached helper to fetch data from Health Canada API.
+    Raises exceptions on failure to avoid caching errors.
+    """
+    clean_query = re.sub(r'[^\w\s]', '', query).strip()
+    url = "https://health-products.canada.ca/api/drug/drugproduct/"
+    params = {
+        'brandname': clean_query,
+        'lang': 'en',
+        'type': 'json'
+    }
+    headers = {
+        'User-Agent': 'Medication Schedule Builder/1.0'
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
+    except requests.exceptions.ReadTimeout:
+        # Retry once with slightly longer timeout
+        response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
+
+    response.raise_for_status()
+    return response.json()
+
+
 def search_health_canada_api(query):
     """Search Health Canada's full drug database API."""
     if not query or len(query) < 2:
         return [], None
 
     try:
-        clean_query = re.sub(r'[^\w\s]', '', query).strip()
-        url = "https://health-products.canada.ca/api/drug/drugproduct/"
-        params = {
-            'brandname': clean_query,
-            'lang': 'en',
-            'type': 'json'
-        }
-        headers = {
-            'User-Agent': 'Medication Schedule Builder/1.0'
-        }
-
-        try:
-            response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
-        except requests.exceptions.ReadTimeout:
-            response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
-        if response.status_code != 200:
-            return [], f"Health Canada API error ({response.status_code})."
-
-        data = response.json()
+        data = _fetch_health_canada_data(query)
 
         results = []
         seen_names = set()
