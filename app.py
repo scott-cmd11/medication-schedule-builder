@@ -2151,6 +2151,9 @@ if 'med_list' not in st.session_state:
 if 'verification_states' not in st.session_state:
     st.session_state.verification_states = {}
 
+if 'confirm_delete_id' not in st.session_state:
+    st.session_state.confirm_delete_id = None
+
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -3237,22 +3240,41 @@ else:
         ''', unsafe_allow_html=True)
 
         # Actions row
-        action_col1, action_col2 = st.columns([4, 1])
+        med_id = med.get('added_at', str(idx))
+        is_deleting = st.session_state.get('confirm_delete_id') == med_id
 
-        with action_col1:
-            verified = st.checkbox(
-                f"Verified",
-                key=f"verify_{idx}",
-                value=st.session_state.verification_states.get(idx, False)
-            )
-            st.session_state.verification_states[idx] = verified
+        if is_deleting:
+            action_col1, action_col2 = st.columns([3, 2])
+            with action_col1:
+                st.markdown(f"<div style='text-align: right; padding-top: 12px; color: var(--danger); font-weight: 600;'>Delete {med['name']}?</div>", unsafe_allow_html=True)
+            with action_col2:
+                c_conf, c_canc = st.columns(2)
+                with c_conf:
+                    if AppButton("Yes", key=f"conf_del_{idx}", type="primary"):
+                        st.session_state.med_list.pop(idx)
+                        st.session_state.confirm_delete_id = None
+                        reset_all_verifications()
+                        st.toast("Removed")
+                        st.rerun()
+                with c_canc:
+                    if AppButton("No", key=f"canc_del_{idx}", type="secondary"):
+                        st.session_state.confirm_delete_id = None
+                        st.rerun()
+        else:
+            action_col1, action_col2 = st.columns([4, 1])
 
-        with action_col2:
-            if AppButton("🗑️", key=f"remove_{idx}", help="Remove"):
-                st.session_state.med_list.pop(idx)
-                reset_all_verifications()
-                st.toast("Removed")
-                st.rerun()
+            with action_col1:
+                verified = st.checkbox(
+                    f"Verified",
+                    key=f"verify_{idx}",
+                    value=st.session_state.verification_states.get(idx, False)
+                )
+                st.session_state.verification_states[idx] = verified
+
+            with action_col2:
+                if AppButton("🗑️", key=f"remove_{idx}", help="Remove"):
+                    st.session_state.confirm_delete_id = med_id
+                    st.rerun()
 
 # =============================================================================
 # PREVIEW SCHEDULE BUTTON (after medication list)
