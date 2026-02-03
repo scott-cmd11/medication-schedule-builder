@@ -2156,6 +2156,26 @@ if 'verification_states' not in st.session_state:
 # HELPER FUNCTIONS
 # =============================================================================
 
+def get_local_matches(query, limit=None):
+    """
+    Optimized case-insensitive search against uppercase keys in MEDICATION_DATABASE.
+    Returns original dictionary objects.
+    """
+    if not query:
+        return []
+
+    query_upper = query.upper()
+    # Optimized: avoids creating .lower() string for every item
+    matches = [
+        med for med in MEDICATION_DATABASE
+        if query_upper in med['brand_name']
+    ]
+
+    if limit:
+        return matches[:limit]
+    return matches
+
+
 def search_medications(query):
     """Search local medication database - instant results."""
     if not query or len(query) < 1:
@@ -2784,12 +2804,9 @@ with st.container(border=True):
 
         # Calculate matches immediately (Dynamic Filtering)
         if search_query and len(search_query) >= 2:
-            query_lower = search_query.lower()
-            local_matches = [
-                med for med in MEDICATION_DATABASE
-                if query_lower in med['brand_name'].lower()
-            ][:6]
+            local_matches = get_local_matches(search_query, limit=6)
 
+            query_lower = search_query.lower()
             api_matches = [
                 med for med in st.session_state.api_search_results
                 if query_lower in med['brand_name'].lower()
