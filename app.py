@@ -6,7 +6,6 @@ A mobile-first Streamlit application with strict "Checks & Balances"
 
 import streamlit as st
 import requests
-import pandas as pd
 from fpdf import FPDF
 from datetime import datetime, timedelta
 import re
@@ -2179,6 +2178,32 @@ def search_medications(query):
     return results[:20]
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_health_canada_data(clean_query):
+    """Cached helper for fetching data from Health Canada API."""
+    url = "https://health-products.canada.ca/api/drug/drugproduct/"
+    params = {
+        'brandname': clean_query,
+        'lang': 'en',
+        'type': 'json'
+    }
+    headers = {
+        'User-Agent': 'Medication Schedule Builder/1.0'
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
+    except requests.exceptions.ReadTimeout:
+        # Retry with longer timeout
+        response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
+
+    # Raise exception for non-200 to avoid caching errors
+    if response.status_code != 200:
+        raise Exception(f"API returned status code {response.status_code}")
+
+    return response.json()
+
+
 def search_health_canada_api(query):
     """Search Health Canada's full drug database API."""
     if not query or len(query) < 2:
@@ -2186,24 +2211,12 @@ def search_health_canada_api(query):
 
     try:
         clean_query = re.sub(r'[^\w\s]', '', query).strip()
-        url = "https://health-products.canada.ca/api/drug/drugproduct/"
-        params = {
-            'brandname': clean_query,
-            'lang': 'en',
-            'type': 'json'
-        }
-        headers = {
-            'User-Agent': 'Medication Schedule Builder/1.0'
-        }
 
         try:
-            response = requests.get(url, params=params, timeout=(5, 60), headers=headers)
-        except requests.exceptions.ReadTimeout:
-            response = requests.get(url, params=params, timeout=(5, 90), headers=headers)
-        if response.status_code != 200:
-            return [], f"Health Canada API error ({response.status_code})."
-
-        data = response.json()
+            data = _fetch_health_canada_data(clean_query)
+        except Exception as e:
+            # Handle the exception that might come from the cached function
+            return [], f"Health Canada API error: {str(e)}"
 
         results = []
         seen_names = set()
